@@ -133,38 +133,43 @@ async def main(f=None):
 
     # 合并结果
     body_lines = []
+    errorflag = ""
     for group in results:
         if isinstance(group, Exception):
+            errorflag = "X"
             print(f"⚠️ 某个任务失败: {type(group).__name__} - {group}")
             continue
         body_lines.extend(group)
 
-    # 保存文件
-    timestamp = get_timestamp()
-    file_new = os.path.join(OUTPUT_DIR, f"{timestamp}.txt")
-    print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル保存 {file_new}")
-    # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル保存 {file_new}")
-    file_content = [re.sub(r"【([A-Z])\..+?】", r"【\1.】", line) for line in body_lines]
-    save_file(file_content, file_new)
-
-    # 差分比较
-    sent = ''
-    files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
-    if len(files) >= 2:
-        file_old = os.path.join(OUTPUT_DIR, files[-2])
-        if compare_files(file_old, file_new):
-            print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、メール送信✅")
-            # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、メール送信✅")        
+    # 错误判断
+    if errorflag != "X" and body_lines:        
+    
+        # 保存文件
+        timestamp = get_timestamp()
+        file_new = os.path.join(OUTPUT_DIR, f"{timestamp}.txt")
+        print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル保存 {file_new}")
+        # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル保存 {file_new}")
+        file_content = [re.sub(r"【([A-Z])\..+?】", r"【\1.】", line) for line in body_lines]
+        save_file(file_content, file_new)
+    
+        # 差分比较
+        sent = ''
+        files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
+        if len(files) >= 2:
+            file_old = os.path.join(OUTPUT_DIR, files[-2])
+            if compare_files(file_old, file_new):
+                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、メール送信✅")
+                # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、メール送信✅")        
+                send_mail(body_lines)
+                sent = 'X'
+            else:
+                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
+                # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
+    
+        else:
+            print("旧ファイル存在なし、メール送信")
             send_mail(body_lines)
             sent = 'X'
-        else:
-            print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
-            # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
-
-    else:
-        print("旧ファイル存在なし、メール送信")
-        send_mail(body_lines)
-        sent = 'X'
 
     # 朝0時0分
     if start.hour == 0 and start.minute < 10 and sent == '':
