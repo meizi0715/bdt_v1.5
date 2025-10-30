@@ -142,6 +142,7 @@ async def main(f=None):
         body_lines.extend(group)
 
     # 错误判断
+    files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
     if errorflag != "X" and body_lines:        
     
         # 保存文件
@@ -154,7 +155,6 @@ async def main(f=None):
     
         # 差分比较
         sent = ''
-        files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
         if len(files) >= 2:
             file_old = os.path.join(OUTPUT_DIR, files[-2])
             if compare_files(file_old, file_new):
