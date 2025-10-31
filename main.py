@@ -31,7 +31,7 @@ web_ele = json.loads(os.getenv("WEB_ELE"))
 
 def get_end_of_next_month(today: date = None) -> date:
     if today is None:
-        today = date.today()
+        today = date.today(ZoneInfo("Asia/Tokyo"))
     year = today.year
     month = today.month + 1
     if month > 12:
