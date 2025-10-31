@@ -90,7 +90,7 @@ def send_mail(body_lines: list[str]):
         
     msg = MIMEText(email_body, "plain", "utf-8")
 
-    today = datetime.now()
+    today = datetime.now(ZoneInfo("Asia/Tokyo"))
     msg["Subject"] = f"{email_config['subject']}({today.strftime('%m/%d')})"
     msg["From"] = email_config["from"]
     msg["To"] = email_config["to"]
