@@ -142,9 +142,8 @@ async def main(f=None):
         body_lines.extend(group)
 
     # 错误判断
-    sent = ''
-    files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
-    if errorflag == "" or ( errorflag != "" and body_lines ):        
+    sent = ''    
+    if errorflag == "" or ( errorflag != "" and body_lines ):  
     
         # 保存文件
         timestamp = get_timestamp()
@@ -155,6 +154,7 @@ async def main(f=None):
         save_file(file_content, file_new)
     
         # 差分比较
+        files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
         if len(files) >= 2:
             file_old = os.path.join(OUTPUT_DIR, files[-2])
             if compare_files(file_old, file_new):
@@ -170,7 +170,10 @@ async def main(f=None):
             print("旧ファイル存在なし、メール送信")
             send_mail(body_lines)
             sent = 'X'
-
+            
+    else:
+        files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
+        
     # 朝0時0分
     if start.hour == 0 and start.minute < 10 and sent == '':
         send_mail(body_lines)
