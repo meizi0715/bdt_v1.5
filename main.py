@@ -46,8 +46,13 @@ def extract_date(text: str, year: int = None) -> date:
         raise ValueError("无法从字符串中提取日期")
     month = int(match.group(1))
     day = int(match.group(2))
-    if year is None:
-        year = datetime.today().year
+    
+    if year is None:        
+        today = datetime.today()
+        year = today.year
+        if today.month in [11, 12] and month in [1, 2]:
+            year += 1
+            
     return date(year, month, day)
 
 def weekend_or_holiday(date: datetime.date) -> bool:
