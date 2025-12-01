@@ -337,7 +337,6 @@ async def get_avalinfo(frame: Frame) -> dict:
     ).all()
 
     today = datetime.now(ZoneInfo("Asia/Tokyo"))
-    year = today.year
     for icon in icons:
         parent_a = await icon.evaluate_handle("el => el.parentElement")
         href = await parent_a.get_property("href")
@@ -368,7 +367,9 @@ async def get_avalinfo(frame: Frame) -> dict:
         if match:
             month, day = int(match.group(1)), int(match.group(2))            
             if today.month in [11, 12] and month in [1, 2]:
-                year += 1
+                year = today.year + 1
+            else:
+                year = today.year
             date_to_check = datetime(year, month, day).date()
             if weekend_or_holiday(date_to_check):
                 holiday = "X"
