@@ -356,7 +356,7 @@ async def get_avalinfo(frame: Frame) -> dict:
             
         # 翌月末まで
         target_date = extract_date(date_text)
-        end_of_this_month = calendar.monthrange(year, today.month)[1]
+        end_of_this_month = calendar.monthrange(today.year, today.month)[1]
         end_of_next_month = get_end_of_next_month()
         if target_date > end_of_next_month and today.day != end_of_this_month:
             return avalinfo
