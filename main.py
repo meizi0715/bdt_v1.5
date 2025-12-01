@@ -47,8 +47,8 @@ def extract_date(text: str, year: int = None) -> date:
     month = int(match.group(1))
     day = int(match.group(2))
     
-    if year is None:        
-        today = datetime.today()
+    if year is None:    
+        today = datetime.now(ZoneInfo("Asia/Tokyo"))
         year = today.year
         if today.month in [11, 12] and month in [1, 2]:
             year += 1
@@ -335,7 +335,9 @@ async def get_avalinfo(frame: Frame) -> dict:
     icons = await frame.locator(
         "img[alt='予約可能'][src='../image/s_empty.gif'], img[alt='予約可能'][src='../image/s_empty4.gif']"
     ).all()
-    
+
+    today = datetime.now(ZoneInfo("Asia/Tokyo"))
+    year = today.year
     for icon in icons:
         parent_a = await icon.evaluate_handle("el => el.parentElement")
         href = await parent_a.get_property("href")
@@ -355,16 +357,19 @@ async def get_avalinfo(frame: Frame) -> dict:
             
         # 翌月末まで
         target_date = extract_date(date_text)
+        end_of_this_month = calendar.monthrange(year, today.month)[1]
         end_of_next_month = get_end_of_next_month()
-        if target_date > end_of_next_month:
+        if target_date > end_of_next_month and today.day != end_of_this_month:
             return avalinfo
             
         # holiday = "X"
         holiday = ""
         match = re.search(r"(\d{1,2})月(\d{1,2})日", date_text)
         if match:
-            month, day = int(match.group(1)), int(match.group(2))
-            date_to_check = datetime(2025, month, day).date()
+            month, day = int(match.group(1)), int(match.group(2))            
+            if today.month in [11, 12] and month in [1, 2]:
+                year += 1
+            date_to_check = datetime(year, month, day).date()
             if weekend_or_holiday(date_to_check):
                 holiday = "X"
 
