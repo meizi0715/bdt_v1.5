@@ -382,9 +382,16 @@ async def get_avalinfo(frame: Frame) -> dict:
     today = datetime.now(ZoneInfo("Asia/Tokyo"))
     
 #===========v1.4 2025/12/29 Add Start
-    # ✅ 修改：改用下下个月的月末作为截止日期
-    end_of_month_after_next = get_end_of_month_after_next()
-    end_of_this_month = calendar.monthrange(today.year, today.month)[1]    
+    # ✅ 动态判断截止日期：月末最后一天用下下个月月末，否则用下个月月末
+    end_of_this_month = calendar.monthrange(today.year, today.month)[1]
+    
+    # if today.day == end_of_this_month:
+    if today.day == 29:
+        # 如果今天是月末最后一天，使用下下个月月末
+        deadline = get_end_of_month_after_next(today)
+    else:
+        # 否则使用下个月月末
+        deadline = get_end_of_next_month(today)    
 #===========v1.4 2025/12/29 Add End
     
     for icon in icons:
@@ -412,11 +419,10 @@ async def get_avalinfo(frame: Frame) -> dict:
         # if target_date > end_of_next_month and today.day != end_of_this_month:
         #     return avalinfo
         
-        # ✅ 修改：改用下下个月的月末作为截止日期
+        # ✅ 使用动态计算的截止日期
         target_date = extract_date(date_text)
-        # if target_date > end_of_month_after_next and today.day != end_of_this_month:
-        if target_date > end_of_month_after_next and today.day != 29:
-            return avalinfo            
+        if target_date > deadline:
+            return avalinfo
 #===========v1.4 2025/12/29 Upd End
             
         # holiday = "X"
