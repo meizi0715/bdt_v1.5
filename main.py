@@ -7,7 +7,7 @@ import hashlib
 import calendar
 import jpholiday
 from zoneinfo import ZoneInfo
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from collections import defaultdict
 from email.mime.text import MIMEText
 from playwright.async_api import Frame
@@ -39,6 +39,26 @@ def get_end_of_next_month(today: date = None) -> date:
         month = 1
     last_day = calendar.monthrange(year, month)[1]
     return date(year, month, last_day)
+
+#===========v1.4 2025/12/29 Add Start
+def get_end_of_month_after_next(today: date = None) -> date:
+    """✅ 新增：获取下下个月的最后一天"""
+    if today is None:
+        today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+    year = today.year
+    month = today.month + 2
+    if month > 12:
+        year += (month - 1) // 12
+        month = month % 12 if month % 12 != 0 else 12
+    last_day = calendar.monthrange(year, month)[1]
+    return date(year, month, last_day)
+
+def get_date_n_weeks_later(today: date, weeks: int) -> date:
+    """✅ 新增：获取N周后的日期"""
+    if today is None:
+        today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+    return today + timedelta(weeks=weeks)
+#===========v1.4 2025/12/29 Add End
 
 def extract_date(text: str, year: int = None) -> date:
     match = re.search(r"(\d{1,2})月(\d{1,2})日", text)
@@ -270,6 +290,29 @@ async def process_kaikan(playwright, kaikan, kaikan21, kaikan22, _, page_lc, lab
             previs += 1
             kaikan += 1
 
+#===========v1.4 2025/12/29 Add Start
+    # ✅ 新增逻辑：检查是否需要继续查询
+    today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+    date_8_weeks_later = get_date_n_weeks_later(today, 8)
+    end_of_month_after_next = get_end_of_month_after_next(today)
+    
+    if date_8_weeks_later < end_of_month_after_next:
+        print(f"📅 {name[0]} - 8週間後({date_8_weeks_later})が下下月末({end_of_month_after_next})より前のため、さらに2週間検索")
+        
+        # 继续查询第9-10周
+        await frame.locator(f'img[alt="{web_ele["nextweek"]}"]').first.click()
+        
+        previs = 0
+        kaikan = 2
+        for row in SCC:
+            _, kaikan21_lc, _, shisetu_lc, _, label_lc, name_lc = row
+            if label_lc == label:
+                lines, old_html = await process_shisetu(_, kaikan21_lc, _, shisetu_lc, _, _, name_lc, frame, old_html, previs, kaikan)
+                result.append(lines)
+                previs += 1
+                kaikan += 1
+#===========v1.4 2025/12/29 Add End
+    
     await browser.close()
     body_line = [line for group in result for line in group]
     return body_line
@@ -337,6 +380,13 @@ async def get_avalinfo(frame: Frame) -> dict:
     ).all()
 
     today = datetime.now(ZoneInfo("Asia/Tokyo"))
+    
+#===========v1.4 2025/12/29 Add Start
+    # ✅ 修改：改用下下个月的月末作为截止日期
+    end_of_month_after_next = get_end_of_month_after_next()
+    end_of_this_month = calendar.monthrange(today.year, today.month)[1]    
+#===========v1.4 2025/12/29 Add End
+    
     for icon in icons:
         parent_a = await icon.evaluate_handle("el => el.parentElement")
         href = await parent_a.get_property("href")
@@ -354,12 +404,20 @@ async def get_avalinfo(frame: Frame) -> dict:
         if not date_text:
             continue
             
-        # 翌月末まで
+#===========v1.4 2025/12/29 Upd Start
+        # # 翌月末まで
+        # target_date = extract_date(date_text)
+        # end_of_this_month = calendar.monthrange(today.year, today.month)[1]
+        # end_of_next_month = get_end_of_next_month()
+        # if target_date > end_of_next_month and today.day != end_of_this_month:
+        #     return avalinfo
+        
+        # ✅ 修改：改用下下个月的月末作为截止日期
         target_date = extract_date(date_text)
-        end_of_this_month = calendar.monthrange(today.year, today.month)[1]
-        end_of_next_month = get_end_of_next_month()
-        if target_date > end_of_next_month and today.day != end_of_this_month:
-            return avalinfo
+        # if target_date > end_of_month_after_next and today.day != end_of_this_month:
+        if target_date > end_of_month_after_next and today.day != 29:
+            return avalinfo            
+#===========v1.4 2025/12/29 Upd End
             
         # holiday = "X"
         holiday = ""
