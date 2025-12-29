@@ -383,8 +383,7 @@ async def get_avalinfo(frame: Frame) -> dict:
     end_of_this_month = calendar.monthrange(today.year, today.month)[1] # 今月末
 
     # 今月末
-    # if today.day == end_of_this_month: 
-    if today.day == 29:
+    if today.day == end_of_this_month: 
         deadline = get_end_of_month_after_next(today) # 翌々月末まで
     else:
         deadline = get_end_of_next_month(today)  # 翌月末まで
