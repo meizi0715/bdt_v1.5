@@ -42,7 +42,7 @@ def get_end_of_next_month(today: date = None) -> date:
 
 #===========v1.4 2025/12/29 Add Start
 def get_end_of_month_after_next(today: date = None) -> date:
-    """✅ 新增：获取下下个月的最后一天"""
+    # 翌々月末
     if today is None:
         today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
     year = today.year
@@ -54,7 +54,7 @@ def get_end_of_month_after_next(today: date = None) -> date:
     return date(year, month, last_day)
 
 def get_date_n_weeks_later(today: date, weeks: int) -> date:
-    """✅ 新增：获取N周后的日期"""
+    # N週間後の日付
     if today is None:
         today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
     return today + timedelta(weeks=weeks)
@@ -291,15 +291,13 @@ async def process_kaikan(playwright, kaikan, kaikan21, kaikan22, _, page_lc, lab
             kaikan += 1
 
 #===========v1.4 2025/12/29 Add Start
-    # ✅ 新增逻辑：检查是否需要继续查询
     today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
     date_8_weeks_later = get_date_n_weeks_later(today, 8)
     end_of_month_after_next = get_end_of_month_after_next(today)
     
     if date_8_weeks_later < end_of_month_after_next:
-        print(f"📅 {name[0]} - 8週間後({date_8_weeks_later})が下下月末({end_of_month_after_next})より前のため、さらに2週間検索")
         
-        # 继续查询第9-10周
+        # 未来9週間～未来10週間
         await frame.locator(f'img[alt="{web_ele["nextweek"]}"]').first.click()
         
         previs = 0
@@ -382,16 +380,14 @@ async def get_avalinfo(frame: Frame) -> dict:
     today = datetime.now(ZoneInfo("Asia/Tokyo"))
     
 #===========v1.4 2025/12/29 Add Start
-    # ✅ 动态判断截止日期：月末最后一天用下下个月月末，否则用下个月月末
-    end_of_this_month = calendar.monthrange(today.year, today.month)[1]
-    
-    # if today.day == end_of_this_month:
+    end_of_this_month = calendar.monthrange(today.year, today.month)[1] # 今月末
+
+    # 今月末
+    # if today.day == end_of_this_month: 
     if today.day == 29:
-        # 如果今天是月末最后一天，使用下下个月月末
-        deadline = get_end_of_month_after_next(today)
+        deadline = get_end_of_month_after_next(today) # 翌々月末まで
     else:
-        # 否则使用下个月月末
-        deadline = get_end_of_next_month(today)    
+        deadline = get_end_of_next_month(today)  # 翌月末まで
 #===========v1.4 2025/12/29 Add End
     
     for icon in icons:
@@ -419,7 +415,6 @@ async def get_avalinfo(frame: Frame) -> dict:
         # if target_date > end_of_next_month and today.day != end_of_this_month:
         #     return avalinfo
         
-        # ✅ 使用动态计算的截止日期
         target_date = extract_date(date_text)
         if target_date > deadline:
             return avalinfo
