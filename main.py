@@ -382,8 +382,12 @@ async def get_avalinfo(frame: Frame) -> dict:
 #===========v1.4 2025/12/29 Add Start
     end_of_this_month = calendar.monthrange(today.year, today.month)[1] # 今月末
 
-    # 今月末の3日間
-    if today.day >= end_of_this_month - 2:  # 月末3天（例：1月29、30、31号）
+#===========v1.5 2026/01/29 Upd Start
+#     # 今月末の3日間
+#     if today.day >= end_of_this_month - 2:  # 月末3天（例：1月29、30、31号）
+    # 今月末17時以降
+    if today.day == end_of_this_month and today.hour >= 17:  # 月末（例：1月31号 17時）
+#===========v1.5 2026/01/29 Upd End
         deadline = get_end_of_month_after_next(today) # 翌々月末まで
     else:
         deadline = get_end_of_next_month(today)  # 翌月末まで
