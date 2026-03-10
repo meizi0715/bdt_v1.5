@@ -44,6 +44,11 @@ jobs:
           WEB_ELE: ${{ secrets.WEB_ELE }}
           SCC_JSON: ${{ secrets.SCC_JSON }}
           EMAIL_CONFIG: ${{ secrets.EMAIL_CONFIG }}
+          #===========v1.6 2026/03/10 Add Start
+          CALENDARS_JSON: ${{ secrets.CALENDARS_JSON }}
+          COUNT_CALENDAR_ID: ${{ secrets.COUNT_CALENDAR_ID }}
+          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
+          #===========v1.6 2026/03/10 Add End
         run: python main.py
 
       - name: Commit txt file to repo
