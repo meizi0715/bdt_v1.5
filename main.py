@@ -120,7 +120,7 @@ def compare_files(file1: str, file2: str) -> bool:
 def send_mail(body_lines: list[str]):
 
     if body_lines:
-        email_body = email_config["header"] + body_lines[0] + "\n" + "\n".join(body_lines[1:] + [email_config["footer"]])
+        email_body = email_config["header"] + body_lines[0] + "\n".join(body_lines[1:] + [email_config["footer"]])
     else:
         email_body = "\n".join([email_config["header"]] + [email_config["noavali"]] + [email_config["footer"]])
         
@@ -237,6 +237,7 @@ def get_month_count_summary(service, target_months: list[tuple[int, int]]) -> li
     lines = []
     lines.append(email_config["line2"])
 
+    first_block = True
     for year, month in sorted(set(target_months)):
         
         next_month = month % 12 + 1
@@ -258,9 +259,12 @@ def get_month_count_summary(service, target_months: list[tuple[int, int]]) -> li
                     continue
                 desc = event.get("description", "").strip()
                 if desc:
+                    if not first_block:
+                        lines.append("")  
                     for line in desc.splitlines():
                         lines.append(line)
                     found_any = True
+                    first_block = False
 
         except Exception as e:
             print(f"⚠️ 統計Calendar読み取りエラー ({year}/{month}): {e}")
@@ -321,7 +325,6 @@ async def main(f=None):
                 
                 if body_lines:
                     body_lines.append(email_config["line0"])
-                    body_lines.append("\n")
                     try:
                         cal_service = get_calendar_service()
                         if cal_service:
