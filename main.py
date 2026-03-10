@@ -236,12 +236,10 @@ def get_month_count_summary(service, target_months: list[tuple[int, int]]) -> li
 
     for year, month in sorted(set(target_months)):
         
-        first_day = date(year, month, 1)
-        last_day = date(year, month, calendar.monthrange(year, month)[1])
-
+        next_month = month % 12 + 1
+        next_year = year + 1 if month == 12 else year
         time_min = datetime(year, month, 1, tzinfo=tz).isoformat()
-        time_max = datetime(last_day.year, last_day.month, last_day.day,
-                            23, 59, 59, tzinfo=tz).isoformat()
+        time_max = datetime(next_year, next_month, 1, 0, 0, 0, tzinfo=tz).isoformat()
 
         try:
             result = service.events().list(
@@ -334,7 +332,7 @@ async def main(f=None):
                                     pass
         
                             # 当日
-                            reservation_lines = get_day_reservations(cal_service, target_dates)
+                            reservation_lines = get_day_reservations(cal_service, list(target_dates))
                             body_lines.extend(reservation_lines)
         
                             # 統計
