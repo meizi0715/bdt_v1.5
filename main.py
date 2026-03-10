@@ -213,14 +213,17 @@ def get_day_reservations(service, target_dates: list[date]) -> list[str]:
 
     lines = []
     lines.append(email_config["line1"])
+    first_block = True
     for d in unique_dates:
         if d not in events_by_date:
             continue
+        if not first_block:
+            lines.append("")   # 日付ブロック間に空行
         weekday_str = WEEKDAYS_JP[d.weekday()]
         lines.append(f"【{d.month}月{d.day}日{weekday_str}】")
-        
         for time_str, summary in sorted(events_by_date[d]):
             lines.append(f"・{time_str} {summary}")
+        first_block = False
     lines.append(email_config["line0"])
     return lines
 
@@ -317,6 +320,8 @@ async def main(f=None):
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")        
                 
                 if body_lines:
+                    body_lines.append(email_config["line0"])
+                    body_lines.append("\n")
                     try:
                         cal_service = get_calendar_service()
                         if cal_service:
