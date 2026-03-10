@@ -338,6 +338,8 @@ async def main(f=None):
                             target_months = list({(d.year, d.month) for d in target_dates})
                             count_lines = get_month_count_summary(cal_service, target_months)
                             body_lines.extend(count_lines)
+
+                            body_lines.extend(email_config["avaliable"])
         
                     except Exception as e:
                         print(f"⚠️ エラー: {e}")
