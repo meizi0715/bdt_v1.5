@@ -211,7 +211,8 @@ def get_day_reservations(service, target_dates: list[date]) -> list[str]:
     if not events_by_date:
         return []
 
-    lines = email_config["line1"]
+    lines = []
+    lines.append(email_config["line1"])
     for d in unique_dates:
         if d not in events_by_date:
             continue
@@ -312,10 +313,11 @@ async def main(f=None):
         if len(files) >= 2:
             file_old = os.path.join(OUTPUT_DIR, files[-2])
             if compare_files(file_old, file_new):
-                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、メール送信✅")
-                # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、メール送信✅")        
 
                 #===========v1.6 2026/03/10 Add Start
+                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")
+                # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")        
+                
                 if body_lines:
                     try:
                         cal_service = get_calendar_service()
@@ -345,7 +347,9 @@ async def main(f=None):
                     except Exception as e:
                         print(f"⚠️ エラー: {e}")
                 #===========v1.6 2026/03/10 Add End
-                                
+                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
+                # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
+                
                 send_mail(body_lines)
                 sent = 'X'
             else:
