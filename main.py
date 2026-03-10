@@ -120,7 +120,7 @@ def compare_files(file1: str, file2: str) -> bool:
 def send_mail(body_lines: list[str]):
 
     if body_lines:
-        email_body = email_config["header"] + body_lines[0] + "\n".join(body_lines[1:] + [email_config["footer"]])
+        email_body = email_config["header"] + body_lines[0] + "\n" + "\n".join(body_lines[1:] + [email_config["footer"]])
     else:
         email_body = "\n".join([email_config["header"]] + [email_config["noavali"]] + [email_config["footer"]])
         
