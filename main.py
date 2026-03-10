@@ -12,6 +12,11 @@ from collections import defaultdict
 from email.mime.text import MIMEText
 from playwright.async_api import Frame
 from playwright.async_api import async_playwright
+#===========v1.6 2026/03/10 Add Start
+from googleapiclient.discovery import build
+from google.oauth2 import service_account
+#===========v1.6 2026/03/10 Add End
+
 
 OUTPUT_DIR = "output"
 # OUTPUT_DIR = "C:/Users/xxx/Downloads/"
@@ -28,6 +33,12 @@ time_slots = {
 SCC = json.loads(os.getenv("SCC_JSON"))
 email_config = json.loads(os.getenv("EMAIL_CONFIG"))
 web_ele = json.loads(os.getenv("WEB_ELE"))
+
+#===========v1.6 2026/03/10 Add Start
+service_account_json = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON")
+calendars = json.loads(os.getenv("CALENDARS_JSON"))
+count_calendar_id = os.getenv("COUNT_CALENDAR_ID")
+#===========v1.6 2026/03/10 Add End
 
 def get_end_of_next_month(today: date = None) -> date:
     if today is None:
@@ -141,6 +152,123 @@ async def wait_for_html_change(frame: Frame, selector: str, old_html: str, cente
     print(f"{now.strftime('%H:%M:%S')} - {centername[0]} ※❗タイムアウト：{int(timeout / 1000)}s")
     raise TimeoutError(f"{centername[0]}※❗タイムアウト：{int(timeout / 1000)}s")
 
+#===========v1.6 2026/03/10 Add Start
+# ========== Google Calendar Service ==========
+def get_calendar_service():
+    SCOPES = ["https://www.googleapis.com/auth/calendar.readonly"]
+    if service_account_json:
+        service_account_info = json.loads(service_account_json)
+        creds = service_account.Credentials.from_service_account_info(
+            service_account_info, scopes=SCOPES
+        )
+    elif os.path.exists("service-account.json"):
+        creds = service_account.Credentials.from_service_account_file(
+            "service-account.json", scopes=SCOPES
+        )
+    else:
+        return None
+    return build("calendar", "v3", credentials=creds)
+
+def get_day_reservations(service, target_dates: list[date]) -> list[str]:
+
+    if not service or not target_dates:
+        return []
+
+    WEEKDAYS_JP = ["（月）", "（火）", "（水）", "（木）", "（金）", "（土）", "（日）"]
+
+    unique_dates = sorted(set(target_dates))
+    tz = ZoneInfo("Asia/Tokyo")
+    time_min = datetime(unique_dates[0].year, unique_dates[0].month, unique_dates[0].day,
+                        0, 0, 0, tzinfo=tz).isoformat()
+    time_max = datetime(unique_dates[-1].year, unique_dates[-1].month, unique_dates[-1].day,
+                        23, 59, 59, tzinfo=tz).isoformat()
+
+    events_by_date = defaultdict(list)
+
+    for calendar_id in calendars:
+        try:
+            result = service.events().list(
+                calendarId=calendar_id,
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+                orderBy="startTime"
+            ).execute()
+            for event in result.get("items", []):
+                start_dt = event["start"].get("dateTime")
+                if not start_dt:
+                    continue
+                    
+                dt = datetime.fromisoformat(start_dt)
+                d = dt.date()
+                if d in unique_dates:
+                    time_str = dt.strftime("%H:%M")
+                    summary = event.get("summary", "")
+                    events_by_date[d].append((time_str, summary))
+        except Exception as e:
+            print(f"⚠️ Calendar読み取りエラー: {e}")
+
+    if not events_by_date:
+        return []
+
+    lines = email_config["line1"]
+    for d in unique_dates:
+        if d not in events_by_date:
+            continue
+        weekday_str = WEEKDAYS_JP[d.weekday()]
+        lines.append(f"【{d.month}月{d.day}日{weekday_str}】")
+        
+        for time_str, summary in sorted(events_by_date[d]):
+            lines.append(f"・{time_str} {summary}")
+    lines.append(email_config["line0"])
+    return lines
+
+def get_month_count_summary(service, target_months: list[tuple[int, int]]) -> list[str]:
+
+    if not service or not count_calendar_id or not target_months:
+        return []
+
+    tz = ZoneInfo("Asia/Tokyo")
+    lines = email_config["line2"]
+    found_any = False
+
+    for year, month in sorted(set(target_months)):
+        
+        first_day = date(year, month, 1)
+        last_day = date(year, month, calendar.monthrange(year, month)[1])
+
+        time_min = datetime(year, month, 1, tzinfo=tz).isoformat()
+        time_max = datetime(last_day.year, last_day.month, last_day.day,
+                            23, 59, 59, tzinfo=tz).isoformat()
+
+        try:
+            result = service.events().list(
+                calendarId=count_calendar_id,
+                timeMin=time_min,
+                timeMax=time_max,
+                singleEvents=True,
+            ).execute()
+
+            for event in result.get("items", []):
+                
+                if "date" not in event.get("start", {}):
+                    continue
+                desc = event.get("description", "").strip()
+                if desc:
+                    for line in desc.splitlines():
+                        lines.append(line)
+                    found_any = True
+
+        except Exception as e:
+            print(f"⚠️ 統計Calendar読み取りエラー ({year}/{month}): {e}")
+
+    if not found_any:
+        return []
+
+    lines.append(email_config["line0"])
+    return lines
+#===========v1.6 2026/03/10 Add End
+
 async def main(f=None):
     # 開始
     start = datetime.now(ZoneInfo("Asia/Tokyo"))
@@ -169,7 +297,7 @@ async def main(f=None):
     # 错误判断
     sent = ''    
     if errorflag == "" or ( errorflag != "" and body_lines ):  
-    
+
         # 保存文件
         timestamp = get_timestamp()
         file_new = os.path.join(OUTPUT_DIR, f"{timestamp}.txt")
@@ -185,6 +313,36 @@ async def main(f=None):
             if compare_files(file_old, file_new):
                 print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、メール送信✅")
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、メール送信✅")        
+
+                #===========v1.6 2026/03/10 Add Start
+                if body_lines:
+                    try:
+                        cal_service = get_calendar_service()
+                        if cal_service:
+                            # 日付
+                            target_dates = set()
+                            today_obj = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+                            for line in body_lines:
+                                try:
+                                    d = extract_date(line)
+                                    if d >= today_obj:
+                                        target_dates.add(d)
+                                except:
+                                    pass
+        
+                            # 当日
+                            reservation_lines = get_day_reservations(cal_service, target_dates)
+                            body_lines.extend(reservation_lines)
+        
+                            # 統計
+                            target_months = list({(d.year, d.month) for d in target_dates})
+                            count_lines = get_month_count_summary(cal_service, target_months)
+                            body_lines.extend(count_lines)
+        
+                    except Exception as e:
+                        print(f"⚠️ エラー: {e}")
+                #===========v1.6 2026/03/10 Add End
+                                
                 send_mail(body_lines)
                 sent = 'X'
             else:
