@@ -340,7 +340,7 @@ async def main(f=None):
                             count_lines = get_month_count_summary(cal_service, target_months)
                             body_lines.extend(count_lines)
 
-                            body_lines.extend(email_config["avaliable"])
+                            body_lines.append(email_config["avaliable"])
         
                     except Exception as e:
                         print(f"⚠️ エラー: {e}")
