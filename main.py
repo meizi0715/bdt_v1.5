@@ -229,8 +229,9 @@ def get_month_count_summary(service, target_months: list[tuple[int, int]]) -> li
         return []
 
     tz = ZoneInfo("Asia/Tokyo")
-    lines = email_config["line2"]
     found_any = False
+    lines = []
+    lines.append(email_config["line2"])
 
     for year, month in sorted(set(target_months)):
         
