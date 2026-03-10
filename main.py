@@ -274,6 +274,38 @@ def get_month_count_summary(service, target_months: list[tuple[int, int]]) -> li
 
     lines.append(email_config["line0"])
     return lines
+
+def read_calendar_info(body_lines) -> list[str]:
+    
+    body_lines.append(email_config["line0"])
+    try:
+        cal_service = get_calendar_service()
+        if cal_service:
+            target_dates = set()
+            today_obj = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+            for line in body_lines:
+                try:
+                    d = extract_date(line)
+                    if d >= today_obj:
+                        target_dates.add(d)
+                except:
+                    pass
+
+            # 当日
+            reservation_lines = get_day_reservations(cal_service, list(target_dates))
+            body_lines.extend(reservation_lines)
+
+            # 統計
+            target_months = list({(d.year, d.month) for d in target_dates})
+            count_lines = get_month_count_summary(cal_service, target_months)
+            body_lines.extend(count_lines)
+
+            body_lines.append(email_config["avaliable"])
+
+    except Exception as e:
+        print(f"⚠️ エラー: {e}")
+
+    return body_lines
 #===========v1.6 2026/03/10 Add End
 
 async def main(f=None):
@@ -324,34 +356,7 @@ async def main(f=None):
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")        
                 
                 if body_lines:
-                    body_lines.append(email_config["line0"])
-                    try:
-                        cal_service = get_calendar_service()
-                        if cal_service:
-                            # 日付
-                            target_dates = set()
-                            today_obj = datetime.now(ZoneInfo("Asia/Tokyo")).date()
-                            for line in body_lines:
-                                try:
-                                    d = extract_date(line)
-                                    if d >= today_obj:
-                                        target_dates.add(d)
-                                except:
-                                    pass
-        
-                            # 当日
-                            reservation_lines = get_day_reservations(cal_service, list(target_dates))
-                            body_lines.extend(reservation_lines)
-        
-                            # 統計
-                            target_months = list({(d.year, d.month) for d in target_dates})
-                            count_lines = get_month_count_summary(cal_service, target_months)
-                            body_lines.extend(count_lines)
-
-                            body_lines.append(email_config["avaliable"])
-        
-                    except Exception as e:
-                        print(f"⚠️ エラー: {e}")
+                    body_lines = append_calendar_info(body_lines)
                 #===========v1.6 2026/03/10 Add End
                 print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
@@ -372,6 +377,10 @@ async def main(f=None):
         
     # 朝0時0分
     if start.hour == 0 and start.minute < 10 and sent == '':
+        #===========v1.6 2026/03/10 Add Start
+        if body_lines:
+            body_lines = append_calendar_info(body_lines)
+        #===========v1.6 2026/03/10 Add End
         send_mail(body_lines)
 
     # 清理旧文件
