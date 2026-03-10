@@ -36,7 +36,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install playwright jpholiday beautifulsoup4
+          pip install playwright jpholiday beautifulsoup4 google-api-python-client google-auth
           playwright install chromium
 
       - name: Run script
