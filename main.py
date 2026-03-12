@@ -356,7 +356,7 @@ async def main(f=None):
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")        
                 
                 if body_lines:
-                    body_lines = append_calendar_info(body_lines)
+                    body_lines = read_calendar_info(body_lines)
                 #===========v1.6 2026/03/10 Add End
                 print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
@@ -379,7 +379,7 @@ async def main(f=None):
     if start.hour == 0 and start.minute < 10 and sent == '':
         #===========v1.6 2026/03/10 Add Start
         if body_lines:
-            body_lines = append_calendar_info(body_lines)
+            body_lines = read_calendar_info(body_lines)
         #===========v1.6 2026/03/10 Add End
         send_mail(body_lines)
 
