@@ -185,7 +185,8 @@ def get_day_reservations(service, target_dates: list[date]) -> list[str]:
 
     events_by_date = defaultdict(list)
 
-    for calendar_id in calendars:
+    for i, calendar_id in enumerate(calendars):
+        booking_type = "予約" if i == 0 else "抽選"
         try:
             result = service.events().list(
                 calendarId=calendar_id,
@@ -204,7 +205,7 @@ def get_day_reservations(service, target_dates: list[date]) -> list[str]:
                 if d in unique_dates:
                     time_str = dt.strftime("%H:%M")
                     summary = event.get("summary", "")
-                    events_by_date[d].append((time_str, summary))
+                    events_by_date[d].append((time_str, summary, booking_type))
         except Exception as e:
             print(f"⚠️ Calendar読み取りエラー: {e}")
 
@@ -221,8 +222,8 @@ def get_day_reservations(service, target_dates: list[date]) -> list[str]:
             lines.append("")   # 日付ブロック間に空行
         weekday_str = WEEKDAYS_JP[d.weekday()]
         lines.append(f"【{d.month}月{d.day}日{weekday_str}】")
-        for time_str, summary in sorted(events_by_date[d]):
-            lines.append(f"・{time_str} {summary}")
+        for time_str, summary, booking_type in sorted(events_by_date[d]):
+            lines.append(f"・{time_str} {summary}（{booking_type}）")
         first_block = False
     lines.append(email_config["line0"])
     return lines
