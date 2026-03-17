@@ -310,9 +310,12 @@ def read_calendar_info(body_lines) -> list[str]:
 #===========v1.6 2026/03/10 Add End
 
 #===========v1.7 2026/03/17 Add Start
-def get_today_schedule(service) -> list[str]:
+def get_today_schedule() -> list[str]:
+    
+    cal_service = get_calendar_service()    
     if not service:
         return []
+        
     today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
     day_lines = get_day_reservations(service, [today])
     if not day_lines:
@@ -320,6 +323,7 @@ def get_today_schedule(service) -> list[str]:
     # day_linesの最初と最後の区切り線を差し替え
     lines = []
     lines.append(email_config["line3"])
+    
     for line in day_lines:
         if line == email_config["line1"] or line == email_config["line0"]:
             continue
@@ -353,6 +357,14 @@ async def main(f=None):
             continue
         body_lines.extend(group)
 
+    #===========v1.7 2026/03/17 Add Start
+    # 朝0時0分
+    today_schedule = []
+    # if start.hour == 0 and start.minute < 10:
+    if start.hour == 7:
+        today_schedule = get_today_schedule()
+    #===========v1.7 2026/03/17 Add End
+    
     # 错误判断
     sent = ''    
     if errorflag == "" or ( errorflag != "" and body_lines ):  
@@ -380,7 +392,10 @@ async def main(f=None):
                 #===========v1.6 2026/03/10 Add End
                 print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
-                
+
+                #===========v1.7 2026/03/17 Add Start
+                body_lines = today_schedule + [""] + body_lines
+                #===========v1.7 2026/03/17 Add End    
                 send_mail(body_lines)
                 sent = 'X'
             else:
@@ -389,6 +404,9 @@ async def main(f=None):
     
         else:
             print("旧ファイル存在なし、メール送信")
+            #===========v1.7 2026/03/17 Add Start
+            body_lines = today_schedule + [""] + body_lines
+            #===========v1.7 2026/03/17 Add End   
             send_mail(body_lines)
             sent = 'X'
             
@@ -396,18 +414,16 @@ async def main(f=None):
         files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
         
     # 朝0時0分
-    if start.hour == 0 and start.minute < 10 and sent == '':
+    # if start.hour == 0 and start.minute < 10 and sent == '':    
+    if start.hour == 7:    
         #===========v1.6 2026/03/10 Add Start
         if body_lines:
             body_lines = read_calendar_info(body_lines)
-        #===========v1.6 2026/03/10 Add End
+        #===========v1.6 2026/03/10 Add End  
         
         #===========v1.7 2026/03/17 Add Start
-        cal_service = get_calendar_service()
-        today_schedule = get_today_schedule(cal_service)
-        if today_schedule:
-            body_lines = today_schedule + [""] + body_lines
-        #===========v1.7 2026/03/17 Add End
+        body_lines = today_schedule + [""] + body_lines
+        #===========v1.7 2026/03/17 Add End   
         send_mail(body_lines)
 
     # 清理旧文件
