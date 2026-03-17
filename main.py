@@ -514,6 +514,14 @@ async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: F
             await frame.wait_for_timeout(2000)
             await frame.select_option("select[name='lst_kaikan']", value=kaikan21_lc)
 
+        #===========v1.7 2026/03/17 Add Start
+        if kaikan == 0 and ( "センター" in name or "中央" in name ):
+            new_html = await wait_for_html_change(frame, "table.clsKoma", old_html_lc, name)
+            old_html_lc = new_html
+            await frame.wait_for_timeout(2000)
+            await frame.select_option("select[name='lst_kaikan']", value=kaikan21_lc)
+        #===========v1.7 2026/03/17 Add End
+        
         if kaikan == 0 and shisetu != "000":
             new_html = await wait_for_html_change(frame, "table.clsKoma", old_html_lc, name)
             old_html_lc = new_html
