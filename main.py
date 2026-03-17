@@ -313,11 +313,11 @@ def read_calendar_info(body_lines) -> list[str]:
 def get_today_schedule() -> list[str]:
     
     cal_service = get_calendar_service()    
-    if not service:
+    if not cal_service:
         return []
         
     today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
-    day_lines = get_day_reservations(service, [today])
+    day_lines = get_day_reservations(cal_service, [today])
     if not day_lines:
         return []
     # day_linesの最初と最後の区切り線を差し替え
@@ -330,6 +330,30 @@ def get_today_schedule() -> list[str]:
         lines.append(line)
     lines.append(email_config["line0"])
     return lines
+
+def merge_body_lines(body_lines: list[str]) -> list[str]:
+    merged = {}
+    order = []
+    current_name = None
+
+    for line in body_lines:
+        stripped = line.strip()
+        if stripped.startswith("【") and stripped.endswith("】"):
+            name = stripped
+            if name not in merged:
+                merged[name] = []
+                order.append(name)
+            current_name = name
+        elif current_name is not None and line.startswith("・"):
+            merged[current_name].append(line)
+        else:
+            current_name = None
+
+    result = []
+    for name in order:
+        result.append(f"\n【{name[1:-1]}】")
+        result.extend(merged[name])
+    return result
 #===========v1.7 2026/03/17 Add End
 
 async def main(f=None):
@@ -358,6 +382,8 @@ async def main(f=None):
         body_lines.extend(group)
 
     #===========v1.7 2026/03/17 Add Start
+    body_lines = merge_body_lines(body_lines)
+    
     # 朝0時0分
     today_schedule = []
     # if start.hour == 0 and start.minute < 10:
@@ -646,8 +672,8 @@ async def get_avalinfo(frame: Frame) -> dict:
             return avalinfo
 #===========v1.4 2025/12/29 Upd End
             
-        # holiday = "X"
-        holiday = ""
+        holiday = "X"
+        # holiday = ""
         match = re.search(r"(\d{1,2})月(\d{1,2})日", date_text)
         if match:
             month, day = int(match.group(1)), int(match.group(2))            
@@ -656,8 +682,8 @@ async def get_avalinfo(frame: Frame) -> dict:
             else:
                 year = today.year
             date_to_check = datetime(year, month, day).date()
-            if weekend_or_holiday(date_to_check):
-                holiday = "X"
+            # if weekend_or_holiday(date_to_check):
+            #     holiday = "X"
 
         if holiday == "X" and row in time_slots:
             time = time_slots[row]
