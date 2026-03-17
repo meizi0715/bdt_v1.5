@@ -309,6 +309,25 @@ def read_calendar_info(body_lines) -> list[str]:
     return body_lines
 #===========v1.6 2026/03/10 Add End
 
+#===========v1.7 2026/03/17 Add Start
+def get_today_schedule(service) -> list[str]:
+    if not service:
+        return []
+    today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+    day_lines = get_day_reservations(service, [today])
+    if not day_lines:
+        return []
+    # day_linesの最初と最後の区切り線を差し替え
+    lines = []
+    lines.append(email_config["line3"])
+    for line in day_lines:
+        if line == email_config["line1"] or line == email_config["line0"]:
+            continue
+        lines.append(line)
+    lines.append(email_config["line0"])
+    return lines
+#===========v1.7 2026/03/17 Add End
+
 async def main(f=None):
     # 開始
     start = datetime.now(ZoneInfo("Asia/Tokyo"))
@@ -382,6 +401,13 @@ async def main(f=None):
         if body_lines:
             body_lines = read_calendar_info(body_lines)
         #===========v1.6 2026/03/10 Add End
+        
+        #===========v1.7 2026/03/17 Add Start
+        cal_service = get_calendar_service()
+        today_schedule = get_today_schedule(cal_service)
+        if today_schedule:
+            body_lines = today_schedule + [""] + body_lines
+        #===========v1.7 2026/03/17 Add End
         send_mail(body_lines)
 
     # 清理旧文件
@@ -513,14 +539,6 @@ async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: F
             old_html_lc = new_html
             await frame.wait_for_timeout(2000)
             await frame.select_option("select[name='lst_kaikan']", value=kaikan21_lc)
-
-        #===========v1.7 2026/03/17 Add Start
-        if kaikan == 0 and ( "センター" in name or "中央" in name ):
-            new_html = await wait_for_html_change(frame, "table.clsKoma", old_html_lc, name)
-            old_html_lc = new_html
-            await frame.wait_for_timeout(2000)
-            await frame.select_option("select[name='lst_kaikan']", value=kaikan21_lc)
-        #===========v1.7 2026/03/17 Add End
         
         if kaikan == 0 and shisetu != "000":
             new_html = await wait_for_html_change(frame, "table.clsKoma", old_html_lc, name)
