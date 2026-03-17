@@ -351,7 +351,12 @@ def merge_body_lines(body_lines: list[str]) -> list[str]:
 
     result = []
     for name in order:
-        result.append(f"\n【{name[1:-1]}】")
+        #===========v1.7 2026/03/17 Upd Start
+        # result.append(f"\n【{name[1:-1]}】")
+        if result:  # 不是第一个才加空行
+            result.append("")
+        result.append(f"【{name[1:-1]}】")
+        #===========v1.7 2026/03/17 Upd End
         result.extend(merged[name])
     return result
 #===========v1.7 2026/03/17 Add End
