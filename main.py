@@ -391,8 +391,7 @@ async def main(f=None):
     
     # 朝0時0分
     today_schedule = []
-    # if start.hour == 0 and start.minute < 10:
-    if start.hour == 8:
+    if start.hour == 0 and start.minute < 10:
         today_schedule = get_today_schedule()
     #===========v1.7 2026/03/17 Add End
     
@@ -445,8 +444,7 @@ async def main(f=None):
         files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
         
     # 朝0時0分
-    # if start.hour == 0 and start.minute < 10 and sent == '':    
-    if start.hour == 8 and sent == '':    
+    if start.hour == 0 and start.minute < 10 and sent == '': 
         #===========v1.6 2026/03/10 Add Start
         if body_lines:
             body_lines = read_calendar_info(body_lines)
@@ -677,8 +675,8 @@ async def get_avalinfo(frame: Frame) -> dict:
             return avalinfo
 #===========v1.4 2025/12/29 Upd End
             
-        holiday = "X"
-        # holiday = ""
+        # holiday = "X"
+        holiday = ""
         match = re.search(r"(\d{1,2})月(\d{1,2})日", date_text)
         if match:
             month, day = int(match.group(1)), int(match.group(2))            
@@ -687,8 +685,8 @@ async def get_avalinfo(frame: Frame) -> dict:
             else:
                 year = today.year
             date_to_check = datetime(year, month, day).date()
-            # if weekend_or_holiday(date_to_check):
-            #     holiday = "X"
+            if weekend_or_holiday(date_to_check):
+                holiday = "X"
 
         if holiday == "X" and row in time_slots:
             time = time_slots[row]
