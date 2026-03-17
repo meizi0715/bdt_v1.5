@@ -387,7 +387,7 @@ async def main(f=None):
     # 朝0時0分
     today_schedule = []
     # if start.hour == 0 and start.minute < 10:
-    if start.hour == 7:
+    if start.hour == 8:
         today_schedule = get_today_schedule()
     #===========v1.7 2026/03/17 Add End
     
@@ -420,7 +420,7 @@ async def main(f=None):
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
 
                 #===========v1.7 2026/03/17 Add Start
-                body_lines = today_schedule + [""] + body_lines
+                body_lines = today_schedule + [email_config["line4"]] + body_lines
                 #===========v1.7 2026/03/17 Add End    
                 send_mail(body_lines)
                 sent = 'X'
@@ -431,7 +431,7 @@ async def main(f=None):
         else:
             print("旧ファイル存在なし、メール送信")
             #===========v1.7 2026/03/17 Add Start
-            body_lines = today_schedule + [""] + body_lines
+            body_lines = today_schedule + [email_config["line4"]] + body_lines
             #===========v1.7 2026/03/17 Add End   
             send_mail(body_lines)
             sent = 'X'
@@ -441,14 +441,14 @@ async def main(f=None):
         
     # 朝0時0分
     # if start.hour == 0 and start.minute < 10 and sent == '':    
-    if start.hour == 7:    
+    if start.hour == 8:    
         #===========v1.6 2026/03/10 Add Start
         if body_lines:
             body_lines = read_calendar_info(body_lines)
         #===========v1.6 2026/03/10 Add End  
         
         #===========v1.7 2026/03/17 Add Start
-        body_lines = today_schedule + [""] + body_lines
+        body_lines = today_schedule + [email_config["line4"]] + body_lines
         #===========v1.7 2026/03/17 Add End   
         send_mail(body_lines)
 
