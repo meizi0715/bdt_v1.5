@@ -441,7 +441,7 @@ async def main(f=None):
         
     # 朝0時0分
     # if start.hour == 0 and start.minute < 10 and sent == '':    
-    if start.hour == 8:    
+    if start.hour == 8 and sent == '':    
         #===========v1.6 2026/03/10 Add Start
         if body_lines:
             body_lines = read_calendar_info(body_lines)
