@@ -335,19 +335,20 @@ def get_today_schedule() -> list[str]:
     cal_service = get_calendar_service()    
     if not cal_service:
         return []
-        
-    today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
-    day_lines = get_day_reservations(cal_service, [today])
-    if not day_lines:
-        return []
-    # day_linesの最初と最後の区切り線を差し替え
+
     lines = []
     lines.append(email_config["line3"])
     
-    for line in day_lines:
-        if line == email_config["line1"] or line == email_config["line0"]:
-            continue
-        lines.append(line)
+    today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+    day_lines = get_day_reservations(cal_service, [today])
+    if not day_lines:
+        lines.append(email_config["noavali"])
+    else:   
+        for line in day_lines:
+            if line == email_config["line1"] or line == email_config["line0"]:
+                continue
+            lines.append(line)
+        
     lines.append(email_config["line0"])
     return lines
 
