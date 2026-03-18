@@ -129,10 +129,10 @@ def send_mail(body_lines: list[str]):
     today_schedule = get_today_schedule()
 
     if body_lines:
-        all_lines = today_schedule + [email_config["line4"]] + body_lines
+        all_lines = today_schedule + [email_config["line3"]] + body_lines
         email_body = email_config["header"] + all_lines[0] + "\n" + "\n".join(all_lines[1:] + [email_config["footer"]])
     else:
-        all_lines = today_schedule + [email_config["line4"]] + [email_config["noavali"]] + [email_config["line0"]]
+        all_lines = today_schedule + [email_config["line3"]] + [email_config["noavali"]] + [email_config["line0"]]
         email_body = "\n".join([email_config["header"]] + all_lines + [email_config["footer"]])
     #===========v1.7 2026/03/17 Upd End
         
@@ -337,8 +337,6 @@ def get_today_schedule() -> list[str]:
         return []
 
     lines = []
-    lines.append(email_config["line3"])
-    
     today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
     day_lines = get_day_reservations(cal_service, [today])
     if not day_lines:
