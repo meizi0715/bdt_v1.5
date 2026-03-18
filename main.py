@@ -138,6 +138,14 @@ def send_mail(body_lines: list[str]):
         # server.login("xxx@gmail.com", "xxx")
         server.send_message(msg)
 
+    #===========v1.7 2026/03/17 Add Start
+    # 送信日付を記録
+    today_str = datetime.now(ZoneInfo("Asia/Tokyo")).strftime("%Y%m%d")
+    sent_flag_file = os.path.join(OUTPUT_DIR, "daily_sent.txt")
+    with open(sent_flag_file, "w") as f:
+        f.write(today_str)
+    #===========v1.7 2026/03/17 Add End
+
 async def wait_for_html_change(frame: Frame, selector: str, old_html: str, centername: str, timeout: int = 25000, interval: int = 500) -> str:
     elapsed = 0
     while elapsed < timeout:
@@ -389,10 +397,8 @@ async def main(f=None):
     #===========v1.7 2026/03/17 Add Start
     body_lines = merge_body_lines(body_lines)
     
-    # 朝0時0分
+    # 当日分
     today_schedule = []
-    if start.hour == 0 and start.minute < 10:
-        today_schedule = get_today_schedule()
     #===========v1.7 2026/03/17 Add End
     
     # 错误判断
@@ -424,6 +430,7 @@ async def main(f=None):
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
 
                 #===========v1.7 2026/03/17 Add Start
+                today_schedule = get_today_schedule()
                 body_lines = today_schedule + [email_config["line4"]] + body_lines
                 #===========v1.7 2026/03/17 Add End    
                 send_mail(body_lines)
@@ -435,6 +442,7 @@ async def main(f=None):
         else:
             print("旧ファイル存在なし、メール送信")
             #===========v1.7 2026/03/17 Add Start
+            today_schedule = get_today_schedule()
             body_lines = today_schedule + [email_config["line4"]] + body_lines
             #===========v1.7 2026/03/17 Add End   
             send_mail(body_lines)
@@ -442,18 +450,33 @@ async def main(f=None):
             
     else:
         files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
-        
-    # 朝0時0分
-    if start.hour == 0 and start.minute < 10 and sent == '': 
-        #===========v1.6 2026/03/10 Add Start
-        if body_lines:
-            body_lines = read_calendar_info(body_lines)
-        #===========v1.6 2026/03/10 Add End  
-        
-        #===========v1.7 2026/03/17 Add Start
-        body_lines = today_schedule + [email_config["line4"]] + body_lines
-        #===========v1.7 2026/03/17 Add End   
-        send_mail(body_lines)
+
+    #===========v1.7 2026/03/17 Upd Start
+    # # 朝0時0分
+    # if start.hour == 0 and start.minute < 10 and sent == '': 
+    #     #===========v1.6 2026/03/10 Add Start
+    #     if body_lines:
+    #         body_lines = read_calendar_info(body_lines)
+    #     #===========v1.6 2026/03/10 Add End  
+    #     send_mail(body_lines)
+
+    if start.hour < 1 and sent == '':
+        today_str = start.strftime("%Y%m%d")
+        sent_flag_file = os.path.join(OUTPUT_DIR, "daily_sent.txt")
+        last_sent_date = ""
+        if os.path.exists(sent_flag_file):
+            with open(sent_flag_file, "r") as f:
+                last_sent_date = f.read().strip()
+        if last_sent_date != today_str:
+            if body_lines:
+                body_lines = read_calendar_info(body_lines)
+            today_schedule = get_today_schedule()    
+            body_lines = today_schedule + [email_config["line4"]] + body_lines
+            print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時強制送信✅")
+            send_mail(body_lines)
+        else:
+            print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時送信済み、スキップ🔕")
+    #===========v1.7 2026/03/17 Upd End
 
     # 清理旧文件
     if start.minute < 10 and len(files) > 6:
