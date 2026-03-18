@@ -129,11 +129,11 @@ def send_mail(body_lines: list[str]):
     today_schedule = get_today_schedule()
 
     if body_lines:
-        all_lines = today_schedule + [email_config["line3"]] + body_lines
-        email_body = email_config["header"] + all_lines[0] + "\n" + "\n".join(all_lines[1:] + [email_config["footer"]])
+        all_lines = today_schedule + [email_config["line3"]] + body_lines        
     else:
         all_lines = today_schedule + [email_config["line3"]] + [email_config["noavali"]] + [email_config["line0"]]
-        email_body = "\n".join([email_config["header"]] + all_lines + [email_config["footer"]])
+        
+    email_body = email_config["header"] + all_lines[0] + "\n" + "\n".join(all_lines[1:] + [email_config["footer"]])
     #===========v1.7 2026/03/17 Upd End
         
     msg = MIMEText(email_body, "plain", "utf-8")
