@@ -119,10 +119,22 @@ def compare_files(file1: str, file2: str) -> bool:
 
 def send_mail(body_lines: list[str]):
 
+    # #===========v1.7 2026/03/17 Upd Start
+    # if body_lines:
+    #     email_body = email_config["header"] + body_lines[0] + "\n" + "\n".join(body_lines[1:] + [email_config["footer"]])
+    # else:
+    #     email_body = "\n".join([email_config["header"]] + [email_config["noavali"]] + [email_config["footer"]])
+
+    today_schedule = []
+    today_schedule = get_today_schedule()
+
     if body_lines:
-        email_body = email_config["header"] + body_lines[0] + "\n" + "\n".join(body_lines[1:] + [email_config["footer"]])
+        all_lines = today_schedule + [email_config["line4"]] + body_lines
+        email_body = email_config["header"] + all_lines[0] + "\n" + "\n".join(all_lines[1:] + [email_config["footer"]])
     else:
-        email_body = "\n".join([email_config["header"]] + [email_config["noavali"]] + [email_config["footer"]])
+        all_lines = today_schedule + [email_config["line4"]] + [email_config["noavali"]] + [email_config["line0"]]
+        email_body = "\n".join([email_config["header"]] + all_lines + [email_config["footer"]])
+    #===========v1.7 2026/03/17 Upd End
         
     msg = MIMEText(email_body, "plain", "utf-8")
 
@@ -396,9 +408,6 @@ async def main(f=None):
 
     #===========v1.7 2026/03/17 Add Start
     body_lines = merge_body_lines(body_lines)
-    
-    # 当日分
-    today_schedule = []
     #===========v1.7 2026/03/17 Add End
     
     # 错误判断
@@ -428,11 +437,7 @@ async def main(f=None):
                 #===========v1.6 2026/03/10 Add End
                 print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
                 # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
-
-                #===========v1.7 2026/03/17 Add Start
-                today_schedule = get_today_schedule()
-                body_lines = today_schedule + [email_config["line4"]] + body_lines
-                #===========v1.7 2026/03/17 Add End    
+   
                 send_mail(body_lines)
                 sent = 'X'
             else:
@@ -441,10 +446,6 @@ async def main(f=None):
     
         else:
             print("旧ファイル存在なし、メール送信")
-            #===========v1.7 2026/03/17 Add Start
-            today_schedule = get_today_schedule()
-            body_lines = today_schedule + [email_config["line4"]] + body_lines
-            #===========v1.7 2026/03/17 Add End   
             send_mail(body_lines)
             sent = 'X'
             
@@ -470,8 +471,6 @@ async def main(f=None):
         if last_sent_date != today_str:
             if body_lines:
                 body_lines = read_calendar_info(body_lines)
-            today_schedule = get_today_schedule()    
-            body_lines = today_schedule + [email_config["line4"]] + body_lines
             print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時強制送信✅")
             send_mail(body_lines)
         else:
