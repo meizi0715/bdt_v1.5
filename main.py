@@ -460,7 +460,7 @@ async def main(f=None):
     #     #===========v1.6 2026/03/10 Add End  
     #     send_mail(body_lines)
 
-    if start.hour < 13 and sent == '':
+    if start.hour < 1 and sent == '':
         today_str = start.strftime("%Y%m%d")
         sent_flag_file = os.path.join(OUTPUT_DIR, "daily_sent.txt")
         last_sent_date = ""
