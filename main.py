@@ -338,7 +338,14 @@ def get_today_schedule() -> list[str]:
 
     lines = []
     today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
-    day_lines = get_day_reservations(cal_service, [today])
+    #===========v1.8 2026/03/28 Add Start
+    tomorrow = today + timedelta(days=1)
+    #===========v1.8 2026/03/28 Add End
+    
+    #===========v1.8 2026/03/28 Upd Start
+    # day_lines = get_day_reservations(cal_service, [today])
+    day_lines = get_day_reservations(cal_service, [today, tomorrow])
+    #===========v1.8 2026/03/28 Upd End
     if not day_lines:
         lines.append(email_config["noavali"])
     else:   
