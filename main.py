@@ -716,17 +716,17 @@ async def get_avalinfo(frame: Frame) -> dict:
             if weekend_or_holiday(date_to_check):
                 holiday = "X"
 
-        #===========v1.9 2026/04/02 Add Start
-        if month == 5 and 1 <= day <= 6:
-            holiday = ""
-        #===========v1.9 2026/04/02 Add End
-
         if holiday == "X" and row in time_slots:
             time = time_slots[row]
         elif row == '5':
             time = '19:00～21:00'
         else:
             time = ""
+
+        #===========v1.9 2026/04/02 Add Start
+        if month == 5 and 1 <= day <= 6:
+            time = ""
+        #===========v1.9 2026/04/02 Add End
 
         if time:
             avalinfo[date_text].append(time)
