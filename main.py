@@ -330,32 +330,87 @@ def read_calendar_info(body_lines) -> list[str]:
 #===========v1.6 2026/03/10 Add End
 
 #===========v1.7 2026/03/17 Add Start
+#===========v2.0 2026/04/08 Upd Start
+# def get_today_schedule() -> list[str]:
+    
+#     cal_service = get_calendar_service()    
+#     if not cal_service:
+#         return []
+
+#     lines = []
+#     today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+#     #===========v1.8 2026/03/28 Add Start
+#     tomorrow = today + timedelta(days=1)
+#     #===========v1.8 2026/03/28 Add End
+    
+#     #===========v1.8 2026/03/28 Upd Start
+#     # day_lines = get_day_reservations(cal_service, [today])
+#     day_lines = get_day_reservations(cal_service, [today, tomorrow])
+#     #===========v1.8 2026/03/28 Upd End
+#     if not day_lines:
+#         lines.append(email_config["noavali"])
+#     else:   
+#         for line in day_lines:
+#             if line == email_config["line1"] or line == email_config["line0"]:
+#                 continue
+#             lines.append(line)
+        
+#     lines.append(email_config["line0"])
+#     return lines
+
 def get_today_schedule() -> list[str]:
     
     cal_service = get_calendar_service()    
     if not cal_service:
         return []
 
-    lines = []
-    today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
-    #===========v1.8 2026/03/28 Add Start
+    tz = ZoneInfo("Asia/Tokyo")
+    today = datetime.now(tz).date()
     tomorrow = today + timedelta(days=1)
-    #===========v1.8 2026/03/28 Add End
     
-    #===========v1.8 2026/03/28 Upd Start
-    # day_lines = get_day_reservations(cal_service, [today])
+    WEEKDAYS_JP = ["（月）", "（火）", "（水）", "（木）", "（金）", "（土）", "（日）"]
     day_lines = get_day_reservations(cal_service, [today, tomorrow])
-    #===========v1.8 2026/03/28 Upd End
-    if not day_lines:
-        lines.append(email_config["noavali"])
-    else:   
-        for line in day_lines:
-            if line == email_config["line1"] or line == email_config["line0"]:
-                continue
-            lines.append(line)
-        
+
+    # day_linesをdate別に分解
+    events_by_label = {}  # "今日" or "明日" -> list of lines
+    current_label = None
+    for line in day_lines:
+        if line == email_config["line1"] or line == email_config["line0"]:
+            continue
+        # 【X月X日（X）】形式の行を検出
+        m = re.match(r"^【(\d+)月(\d+)日[（(].+[）)]】$", line)
+        if m:
+            month, day = int(m.group(1)), int(m.group(2))
+            d = date(today.year if not (today.month in [11,12] and month in [1,2]) else today.year+1, month, day)
+            if d == today:
+                current_label = "今日"
+            elif d == tomorrow:
+                current_label = "明日"
+            else:
+                current_label = None
+            if current_label:
+                events_by_label[current_label] = []
+        elif current_label and line.startswith("・"):
+            events_by_label[current_label].append(line)
+
+    lines = []
+    for d, label in [(today, "今日"), (tomorrow, "明日")]:
+        weekday_str = WEEKDAYS_JP[d.weekday()]
+        lines.append(f"【{d.month}月{d.day}日{weekday_str}】　{label}")
+        day_events = events_by_label.get(label, [])
+        if day_events:
+            lines.extend(day_events)
+        else:
+            lines.append("・なし")
+        lines.append("")  # 日付間の空行
+
+    # 末尾の空行を除去
+    if lines and lines[-1] == "":
+        lines.pop()
+
     lines.append(email_config["line0"])
     return lines
+#===========v2.0 2026/04/08 Upd End
 
 def merge_body_lines(body_lines: list[str]) -> list[str]:
     merged = {}
