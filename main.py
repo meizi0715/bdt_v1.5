@@ -585,6 +585,11 @@ async def main(f=None):
                         skip_reason.append("誤判回復（前々回と同一内容）")
                     reason_str = "、".join(skip_reason) if skip_reason else "不明"
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（{reason_str}）🔕")
+                    
+                    #----後日削除Start
+                    send_mail([l for l in body_lines if not l.startswith("__TIMEOUT__:")], ...)
+                    sent = 'X'
+                    #----後日削除End
             
             else:
                 print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異なし、送信不要🔕")
