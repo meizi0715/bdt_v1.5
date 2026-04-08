@@ -467,9 +467,15 @@ async def main(f=None):
             continue
         body_lines.extend(group)
 
-    #===========v1.7 2026/03/17 Add Start
+    #===========v2.0 2026/04/08 Upd Start
+    # #===========v1.7 2026/03/17 Add Start
+    # body_lines = merge_body_lines(body_lines)
+    # #===========v1.7 2026/03/17 Add End
+    
+    timeout_lines = [line for line in body_lines if line.startswith("__TIMEOUT__:")]
     body_lines = merge_body_lines(body_lines)
-    #===========v1.7 2026/03/17 Add End
+    body_lines = timeout_lines + body_lines
+    #===========v2.0 2026/04/08 Upd End
     
     # 错误判断
     sent = ''    
@@ -480,36 +486,108 @@ async def main(f=None):
         file_new = os.path.join(OUTPUT_DIR, f"{timestamp}.txt")
         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル保存 {file_new}")
         # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル保存 {file_new}")
-        file_content = [re.sub(r"【([A-Z])\..+?】", r"【\1.】", line) for line in body_lines]
-        save_file(file_content, file_new)
+
+        #===========v2.0 2026/04/08 Upd Start
+        # file_content = [re.sub(r"【([A-Z])\..+?】", r"【\1.】", line) for line in body_lines]
+        # save_file(file_content, file_new)
+
+        # # 差分比较
+        # files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
+        # if len(files) >= 2:
+        #     file_old = os.path.join(OUTPUT_DIR, files[-3])
+        #     if compare_files(file_old, file_new):
+
+        #         #===========v1.6 2026/03/10 Add Start
+        #         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")
+        #         # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")        
+                
+        #         if body_lines:
+        #             body_lines = read_calendar_info(body_lines)
+        #         #===========v1.6 2026/03/10 Add End
+        #         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
+        #         # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
+   
+        #         send_mail(body_lines)
+        #         sent = 'X'
+        #     else:
+        #         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
+        #         # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
     
+        # else:
+        #     print("旧ファイル存在なし、メール送信")
+        #     send_mail(body_lines)
+        #     sent = 'X'
+
+        
+        timeout_facilities = set()
+        for line in body_lines:
+            if line.startswith("__TIMEOUT__:"):
+                timeout_facilities.add(line.split(":", 1)[1])
+        
+        file_content = [re.sub(r"【([A-Z])\..+?】", r"【\1.】", line) for line in body_lines if not line.startswith("__TIMEOUT__")]
+        save_file(file_content, file_new)
+
         # 差分比较
         files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
         if len(files) >= 2:
-            file_old = os.path.join(OUTPUT_DIR, files[-3])
-            if compare_files(file_old, file_new):
+            file_prev1 = os.path.join(OUTPUT_DIR, files[-2])
+            if compare_files(file_prev1, file_new):
 
-                #===========v1.6 2026/03/10 Add Start
-                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")
-                # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")        
+                # 读取上一次和本次内容
+                with open(file_prev1, encoding="utf-8") as f:
+                    prev1_lines = set(f.read().splitlines())
+                with open(file_new, encoding="utf-8") as f:
+                    new_lines = set(f.read().splitlines())
+
+                added   = new_lines - prev1_lines
+                removed = prev1_lines - new_lines
+
+                meaningful_removed = [
+                    line for line in removed
+                    if line.strip() and not line.startswith("【")
+                ]
                 
-                if body_lines:
-                    body_lines = read_calendar_info(body_lines)
-                #===========v1.6 2026/03/10 Add End
-                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
-                # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
-   
-                send_mail(body_lines)
-                sent = 'X'
+                removed_by_timeout = (
+                    bool(timeout_facilities)
+                    and bool(meaningful_removed)
+                    and all(
+                        any(fac in line for fac in timeout_facilities)
+                        for line in meaningful_removed
+                    )
+                )
+
+                # 增加是否只是误判恢复（本次内容与上上次相同）
+                is_false_recovery = False
+                if added and len(files) >= 3:
+                    file_prev2 = os.path.join(OUTPUT_DIR, files[-3])
+                    with open(file_prev2, encoding="utf-8") as f:
+                        prev2_lines = set(f.read().splitlines())
+                    is_false_recovery = (new_lines == prev2_lines)
+
+                should_send = False
+                if added and not is_false_recovery:
+                    should_send = True
+                elif removed and not removed_by_timeout:
+                    should_send = True
+
+                if should_send:
+                    print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり、Calendar読込✅")
+                    if body_lines:
+                        body_lines = read_calendar_info(body_lines)
+                    print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
+                    send_mail(body_lines)
+                    sent = 'X'
+                else:
+                    print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（timeout或误判恢复）🔕")
             else:
-                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
-                # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
-    
+                print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異なし、送信不要🔕")
+
         else:
             print("旧ファイル存在なし、メール送信")
             send_mail(body_lines)
             sent = 'X'
-            
+        #===========v2.0 2026/04/08 Upd End
+                
     else:
         files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
 
@@ -683,7 +761,10 @@ async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: F
         date_to_times.update(await get_avalinfo(frame))
 
     except TimeoutError:
-        return body_lines_lc, old_html_lc
+        #===========v2.0 2026/04/08 Upd Start
+        # return body_lines_lc, old_html_lc
+        return [f"__TIMEOUT__:{name[0]}"], old_html_lc
+        #===========v2.0 2026/04/08 Upd End
 
     if date_to_times:        
         body_lines_lc.append(f"\n【{name}】")
