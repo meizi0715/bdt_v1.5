@@ -530,7 +530,7 @@ async def main(f=None):
         # 差分比较
         files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
         if len(files) >= 2:
-            file_prev1 = os.path.join(OUTPUT_DIR, files[-2])
+            file_prev1 = os.path.join(OUTPUT_DIR, files[-3])
             if compare_files(file_prev1, file_new):
 
                 # 读取上一次和本次内容
@@ -559,7 +559,7 @@ async def main(f=None):
                 # 增加是否只是误判恢复（本次内容与上上次相同）
                 is_false_recovery = False
                 if added and len(files) >= 3:
-                    file_prev2 = os.path.join(OUTPUT_DIR, files[-3])
+                    file_prev2 = os.path.join(OUTPUT_DIR, files[-4])
                     with open(file_prev2, encoding="utf-8") as f:
                         prev2_lines = set(f.read().splitlines())
                     is_false_recovery = (new_lines == prev2_lines)
