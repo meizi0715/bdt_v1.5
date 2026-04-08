@@ -575,16 +575,23 @@ async def main(f=None):
                     if body_lines:
                         body_lines = read_calendar_info(body_lines)
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
-                    send_mail(body_lines)
+                    send_mail([l for l in body_lines if not l.startswith("__TIMEOUT__:")], ...)
                     sent = 'X'
                 else:
-                    print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（timeout或误判恢复）🔕")
+                    skip_reason = []
+                    if removed_by_timeout:
+                        skip_reason.append(f"timeout（{', '.join(timeout_facilities)}）による消失")
+                    if is_false_recovery:
+                        skip_reason.append("誤判回復（前々回と同一内容）")
+                    reason_str = "、".join(skip_reason) if skip_reason else "不明"
+                    print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（{reason_str}）🔕")
+            
             else:
                 print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異なし、送信不要🔕")
 
         else:
             print("旧ファイル存在なし、メール送信")
-            send_mail(body_lines)
+            send_mail([l for l in body_lines if not l.startswith("__TIMEOUT__:")], ...)
             sent = 'X'
         #===========v2.0 2026/04/08 Upd End
                 
@@ -611,7 +618,7 @@ async def main(f=None):
             if body_lines:
                 body_lines = read_calendar_info(body_lines)
             print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時強制送信✅")
-            send_mail(body_lines)
+            send_mail([l for l in body_lines if not l.startswith("__TIMEOUT__:")], ...)
         else:
             print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時送信済み、スキップ🔕")
     #===========v1.7 2026/03/17 Upd End
@@ -636,85 +643,58 @@ async def process_kaikan(playwright, kaikan, kaikan21, kaikan22, _, page_lc, lab
     start = datetime.now(ZoneInfo("Asia/Tokyo"))
     # start = datetime.now()
 
-    browser = await playwright.chromium.launch(headless=True)
-    # browser = await playwright.chromium.launch(headless=False)
-    page = await browser.new_page()
-    await page.goto(email_config["link"])
-    # await page.goto("xxx")
-
-    # await page.wait_for_selector("iframe[name='MainFrame']", timeout=30000)
-    await page.wait_for_load_state("domcontentloaded")
-    frame = page.frame(name="MainFrame")
-    if not frame:
-        print(f"❌ MainFrame not found for {name[0]}")
-        await browser.close()
-        return []
-
-    await frame.wait_for_selector("input[alt='目的']", timeout=30000)
-    await frame.locator("input[alt='目的']").click()
-
-    checkbox_selector = f"input[name='chk_bunrui1_{kaikan}']"
-    await frame.wait_for_selector(checkbox_selector, timeout=30000)
-    await frame.locator(checkbox_selector).check()
-
-    await frame.locator(f'input[alt="{web_ele["noloca"]}"]').click()
-
-    if page_lc != "0":
-        await frame.wait_for_selector(f'input[alt="{web_ele["nextpage"]}"]', timeout=30000)
-        await frame.locator(f'input[alt="{web_ele["nextpage"]}"]').click()
-
-    await frame.wait_for_selector(f"input[onclick*=\"cmdYoyaku_click('{kaikan21}','{kaikan22}')\"]", timeout=30000)
-    await frame.locator(f"input[onclick*=\"cmdYoyaku_click('{kaikan21}','{kaikan22}')\"]").click()
-
-    await frame.wait_for_selector('input[name="disp_mode"]', timeout=10000)
-    page.on("dialog", lambda dialog: dialog.accept())  # 全局弹窗处理保险
-    old_html = await frame.locator("table.clsKoma").first.inner_html()
-
+    #===========v2.0 2026/04/08 Add Start
+    browser = None
     try:
-        async with page.expect_event("dialog", timeout=5000):
-            await frame.locator("input[name='disp_mode'][value='0']").click()
-
-    except Exception as e:
-        print(f"⚠️ {name[0]} - 弹窗处理失败: {e}")
-
-    result = []
-
-    # 本日～未来4週間
-    previs = 0
-    kaikan = 0
-    for row in SCC:
-        _, kaikan21_lc, _, shisetu_lc, _, label_lc, name_lc = row
-        if label_lc == label:
-            lines, old_html = await process_shisetu(_, kaikan21_lc, _, shisetu_lc, _, _, name_lc, frame, old_html, previs, kaikan)
-            result.append(lines)
-            previs += 1
-            kaikan += 1
-
-    await frame.locator(f'img[alt="{web_ele["nextweek"]}"]').first.click()
-
-    # 未来4週間～未来8週間
-    previs = 0
-    kaikan = 1
-    for row in SCC:
-        _, kaikan21_lc, _, shisetu_lc, _, label_lc, name_lc = row
-        if label_lc == label:
-            lines, old_html = await process_shisetu(_, kaikan21_lc, _, shisetu_lc, _, _, name_lc, frame, old_html, previs, kaikan)
-            result.append(lines)
-            previs += 1
-            kaikan += 1
-
-#===========v1.4 2025/12/29 Add Start
-    today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
-    date_8_weeks_later = get_date_n_weeks_later(today, 8)
-    end_of_month_after_next = get_end_of_month_after_next(today)
+    #===========v2.0 2026/04/08 Add End
+        
+        browser = await playwright.chromium.launch(headless=True)
+        # browser = await playwright.chromium.launch(headless=False)
+        page = await browser.new_page()
+        
+        await page.goto(email_config["link"])
+        # await page.goto("xxx")
     
-    if date_8_weeks_later < end_of_month_after_next:
-        
-        # 未来9週間～未来10週間
-        await frame.locator(f'img[alt="{web_ele["nextweek"]}"]').first.click()
-        
+        # await page.wait_for_selector("iframe[name='MainFrame']", timeout=30000)
+        await page.wait_for_load_state("domcontentloaded")
+        frame = page.frame(name="MainFrame")
+        if not frame:
+            print(f"❌ MainFrame not found for {name[0]}")
+            await browser.close()
+            return []
+    
+        await frame.wait_for_selector("input[alt='目的']", timeout=30000)
+        await frame.locator("input[alt='目的']").click()
+    
+        checkbox_selector = f"input[name='chk_bunrui1_{kaikan}']"
+        await frame.wait_for_selector(checkbox_selector, timeout=30000)
+        await frame.locator(checkbox_selector).check()
+    
+        await frame.locator(f'input[alt="{web_ele["noloca"]}"]').click()
+    
+        if page_lc != "0":
+            await frame.wait_for_selector(f'input[alt="{web_ele["nextpage"]}"]', timeout=30000)
+            await frame.locator(f'input[alt="{web_ele["nextpage"]}"]').click()
+    
+        await frame.wait_for_selector(f"input[onclick*=\"cmdYoyaku_click('{kaikan21}','{kaikan22}')\"]", timeout=30000)
+        await frame.locator(f"input[onclick*=\"cmdYoyaku_click('{kaikan21}','{kaikan22}')\"]").click()
+    
+        await frame.wait_for_selector('input[name="disp_mode"]', timeout=10000)
+        page.on("dialog", lambda dialog: dialog.accept())  # 全局弹窗处理保险
+        old_html = await frame.locator("table.clsKoma").first.inner_html()
+    
+        try:
+            async with page.expect_event("dialog", timeout=5000):
+                await frame.locator("input[name='disp_mode'][value='0']").click()
+    
+        except Exception as e:
+            print(f"⚠️ {name[0]} - 弹窗处理失败: {e}")
+    
+        result = []
+    
+        # 本日～未来4週間
         previs = 0
-        kaikan = 2
+        kaikan = 0
         for row in SCC:
             _, kaikan21_lc, _, shisetu_lc, _, label_lc, name_lc = row
             if label_lc == label:
@@ -722,11 +702,55 @@ async def process_kaikan(playwright, kaikan, kaikan21, kaikan22, _, page_lc, lab
                 result.append(lines)
                 previs += 1
                 kaikan += 1
-#===========v1.4 2025/12/29 Add End
     
-    await browser.close()
-    body_line = [line for group in result for line in group]
-    return body_line
+        await frame.locator(f'img[alt="{web_ele["nextweek"]}"]').first.click()
+    
+        # 未来4週間～未来8週間
+        previs = 0
+        kaikan = 1
+        for row in SCC:
+            _, kaikan21_lc, _, shisetu_lc, _, label_lc, name_lc = row
+            if label_lc == label:
+                lines, old_html = await process_shisetu(_, kaikan21_lc, _, shisetu_lc, _, _, name_lc, frame, old_html, previs, kaikan)
+                result.append(lines)
+                previs += 1
+                kaikan += 1
+    
+    #===========v1.4 2025/12/29 Add Start
+        today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+        date_8_weeks_later = get_date_n_weeks_later(today, 8)
+        end_of_month_after_next = get_end_of_month_after_next(today)
+        
+        if date_8_weeks_later < end_of_month_after_next:
+            
+            # 未来9週間～未来10週間
+            await frame.locator(f'img[alt="{web_ele["nextweek"]}"]').first.click()
+            
+            previs = 0
+            kaikan = 2
+            for row in SCC:
+                _, kaikan21_lc, _, shisetu_lc, _, label_lc, name_lc = row
+                if label_lc == label:
+                    lines, old_html = await process_shisetu(_, kaikan21_lc, _, shisetu_lc, _, _, name_lc, frame, old_html, previs, kaikan)
+                    result.append(lines)
+                    previs += 1
+                    kaikan += 1
+    #===========v1.4 2025/12/29 Add End
+        
+        await browser.close()
+        body_line = [line for group in result for line in group]
+        return body_line
+      
+    #===========v2.0 2026/04/08 Add Start
+    except Exception as e:
+        print(f"⚠️ {name[0]} 処理失敗: {type(e).__name__} - {e}")
+        if browser:
+            try:
+                await browser.close()
+            except:
+                pass
+        return [f"__TIMEOUT__:{name[0]}"]
+    #===========v2.0 2026/04/08 Add End  
 
 async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: Frame, old_html: str, previs: int, kaikan: int) -> tuple[list[str], str]:
 
