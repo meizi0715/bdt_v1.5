@@ -412,6 +412,11 @@ def get_today_schedule() -> list[str]:
     return lines
 #===========v2.0 2026/04/08 Upd End
 
+#===========v2.1 2026/04/10 Add Start
+def filter_body_lines(body_lines: list[str]) -> list[str]:
+    return [l for l in body_lines if not l.startswith("__TIMEOUT__:")]
+#===========v2.1 2026/04/10 Add End
+
 def merge_body_lines(body_lines: list[str]) -> list[str]:
     merged = {}
     order = []
@@ -573,9 +578,12 @@ async def main(f=None):
                 if should_send:
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり、Calendar読込✅")
                     if body_lines:
-                        body_lines = read_calendar_info(body_lines)
+                        #===========v2.1 2026/04/10 Upd Start
+                        # body_lines = read_calendar_info(body_lines)
+                        body_lines = read_calendar_info(filter_body_lines(body_lines))
+                        #===========v2.1 2026/04/10 Upd End
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
-                    send_mail([l for l in body_lines if not l.startswith("__TIMEOUT__:")], ...)
+                    send_mail(body_lines)
                     sent = 'X'
                 else:
                     skip_reason = []
@@ -587,7 +595,7 @@ async def main(f=None):
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（{reason_str}）🔕")
                     
                     #----後日削除Start
-                    send_mail([l for l in body_lines if not l.startswith("__TIMEOUT__:")], ...)
+                    send_mail(filter_body_lines(body_lines))
                     sent = 'X'
                     #----後日削除End
             
@@ -596,7 +604,7 @@ async def main(f=None):
 
         else:
             print("旧ファイル存在なし、メール送信")
-            send_mail([l for l in body_lines if not l.startswith("__TIMEOUT__:")], ...)
+            send_mail(filter_body_lines(body_lines))
             sent = 'X'
         #===========v2.0 2026/04/08 Upd End
                 
@@ -621,9 +629,12 @@ async def main(f=None):
                 last_sent_date = f.read().strip()
         if last_sent_date != today_str:
             if body_lines:
-                body_lines = read_calendar_info(body_lines)
+                #===========v2.1 2026/04/10 Upd Start
+                # body_lines = read_calendar_info(body_lines)
+                body_lines = read_calendar_info(filter_body_lines(body_lines))
+                #===========v2.1 2026/04/10 Upd End
             print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時強制送信✅")
-            send_mail([l for l in body_lines if not l.startswith("__TIMEOUT__:")], ...)
+            send_mail(body_lines)
         else:
             print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時送信済み、スキップ🔕")
     #===========v1.7 2026/03/17 Upd End
