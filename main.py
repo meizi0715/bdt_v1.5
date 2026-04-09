@@ -94,14 +94,14 @@ def get_timestamp():
     # now = datetime.now()
     rounded = now.replace(minute=(now.minute // 10) * 10, second=0, microsecond=0)
     return rounded.strftime("%Y%m%d%H%M")
-
+    
 def save_file(lines: list[str], filename: str):
     with open(filename, "w", encoding="utf-8") as f:
         for line in lines:
             if isinstance(line, str):
                 f.write(line + "\n")
             elif isinstance(line, list):
-                # 展开列表中的每个元素（即使只有一个）
+                # 展開リスト中の每个元素（即使只有一个）
                 for subline in line:
                     if isinstance(subline, str):
                         f.write(subline + "\n")
@@ -117,24 +117,17 @@ def compare_files(file1: str, file2: str) -> bool:
 
     return hash_file(file1) != hash_file(file2)
 
-def send_mail(body_lines: list[str]):
-
-    # #===========v1.7 2026/03/17 Upd Start
-    # if body_lines:
-    #     email_body = email_config["header"] + body_lines[0] + "\n" + "\n".join(body_lines[1:] + [email_config["footer"]])
-    # else:
-    #     email_body = "\n".join([email_config["header"]] + [email_config["noavali"]] + [email_config["footer"]])
+def send_mail(body_lines: list[str], has_avali: bool = True):
 
     today_schedule = []
     today_schedule = get_today_schedule()
 
-    if body_lines:
+    if has_avali and body_lines:
         all_lines = today_schedule + [email_config["line3"]] + body_lines        
     else:
         all_lines = today_schedule + [email_config["line3"]] + [email_config["noavali"]] + [email_config["line0"]]
         
     email_body = email_config["header"] + all_lines[0] + "\n" + "\n".join(all_lines[1:] + [email_config["footer"]])
-    #===========v1.7 2026/03/17 Upd End
         
     msg = MIMEText(email_body, "plain", "utf-8")
 
@@ -142,12 +135,9 @@ def send_mail(body_lines: list[str]):
     msg["Subject"] = f"{email_config['subject']}({today.strftime('%m/%d')})"
     msg["From"] = email_config["from"]
     msg["To"] = email_config["to"]
-    # msg["From"] = "xxx@gmail.com"
-    # msg["To"] = "xxx@gmail.com"
 
     with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
         server.login(email_config["from"], email_config["pass"])
-        # server.login("xxx@gmail.com", "xxx")
         server.send_message(msg)
 
     #===========v1.7 2026/03/17 Add Start
@@ -331,33 +321,6 @@ def read_calendar_info(body_lines) -> list[str]:
 
 #===========v1.7 2026/03/17 Add Start
 #===========v2.0 2026/04/08 Upd Start
-# def get_today_schedule() -> list[str]:
-    
-#     cal_service = get_calendar_service()    
-#     if not cal_service:
-#         return []
-
-#     lines = []
-#     today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
-#     #===========v1.8 2026/03/28 Add Start
-#     tomorrow = today + timedelta(days=1)
-#     #===========v1.8 2026/03/28 Add End
-    
-#     #===========v1.8 2026/03/28 Upd Start
-#     # day_lines = get_day_reservations(cal_service, [today])
-#     day_lines = get_day_reservations(cal_service, [today, tomorrow])
-#     #===========v1.8 2026/03/28 Upd End
-#     if not day_lines:
-#         lines.append(email_config["noavali"])
-#     else:   
-#         for line in day_lines:
-#             if line == email_config["line1"] or line == email_config["line0"]:
-#                 continue
-#             lines.append(line)
-        
-#     lines.append(email_config["line0"])
-#     return lines
-
 def get_today_schedule() -> list[str]:
     
     cal_service = get_calendar_service()    
@@ -412,11 +375,6 @@ def get_today_schedule() -> list[str]:
     return lines
 #===========v2.0 2026/04/08 Upd End
 
-#===========v2.1 2026/04/10 Add Start
-def filter_body_lines(body_lines: list[str]) -> list[str]:
-    return [l for l in body_lines if not l.startswith("__TIMEOUT__:")]
-#===========v2.1 2026/04/10 Add End
-
 def merge_body_lines(body_lines: list[str]) -> list[str]:
     merged = {}
     order = []
@@ -438,7 +396,6 @@ def merge_body_lines(body_lines: list[str]) -> list[str]:
     result = []
     for name in order:
         #===========v1.7 2026/03/17 Upd Start
-        # result.append(f"\n【{name[1:-1]}】")
         if result:  # 不是第一个才加空行
             result.append("")
         result.append(f"【{name[1:-1]}】")
@@ -446,6 +403,9 @@ def merge_body_lines(body_lines: list[str]) -> list[str]:
         result.extend(merged[name])
     return result
 #===========v1.7 2026/03/17 Add End
+
+def filter_body_lines(body_lines: list[str]) -> list[str]:
+    return [l for l in body_lines if not l.startswith("__TIMEOUT__:")]
 
 async def main(f=None):
     # 開始
@@ -473,10 +433,6 @@ async def main(f=None):
         body_lines.extend(group)
 
     #===========v2.0 2026/04/08 Upd Start
-    # #===========v1.7 2026/03/17 Add Start
-    # body_lines = merge_body_lines(body_lines)
-    # #===========v1.7 2026/03/17 Add End
-    
     timeout_lines = [line for line in body_lines if line.startswith("__TIMEOUT__:")]
     body_lines = merge_body_lines(body_lines)
     body_lines = timeout_lines + body_lines
@@ -490,40 +446,8 @@ async def main(f=None):
         timestamp = get_timestamp()
         file_new = os.path.join(OUTPUT_DIR, f"{timestamp}.txt")
         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル保存 {file_new}")
-        # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル保存 {file_new}")
 
         #===========v2.0 2026/04/08 Upd Start
-        # file_content = [re.sub(r"【([A-Z])\..+?】", r"【\1.】", line) for line in body_lines]
-        # save_file(file_content, file_new)
-
-        # # 差分比较
-        # files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
-        # if len(files) >= 2:
-        #     file_old = os.path.join(OUTPUT_DIR, files[-3])
-        #     if compare_files(file_old, file_new):
-
-        #         #===========v1.6 2026/03/10 Add Start
-        #         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")
-        #         # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異あり、Calendar読込✅")        
-                
-        #         if body_lines:
-        #             body_lines = read_calendar_info(body_lines)
-        #         #===========v1.6 2026/03/10 Add End
-        #         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
-        #         # print(f"{datetime.now().strftime('%H:%M:%S')} - メール送信✅")        
-   
-        #         send_mail(body_lines)
-        #         sent = 'X'
-        #     else:
-        #         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
-        #         # print(f"{datetime.now().strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_old}\n           差異なし、送信不要🔕")
-    
-        # else:
-        #     print("旧ファイル存在なし、メール送信")
-        #     send_mail(body_lines)
-        #     sent = 'X'
-
-        
         timeout_facilities = set()
         for line in body_lines:
             if line.startswith("__TIMEOUT__:"):
@@ -538,7 +462,7 @@ async def main(f=None):
             file_prev1 = os.path.join(OUTPUT_DIR, files[-3])
             if compare_files(file_prev1, file_new):
 
-                # 读取上一次和本次内容
+                # 読取上一次和本次内容
                 with open(file_prev1, encoding="utf-8") as f:
                     prev1_lines = set(f.read().splitlines())
                 with open(file_new, encoding="utf-8") as f:
@@ -561,7 +485,7 @@ async def main(f=None):
                     )
                 )
 
-                # 增加是否只是误判恢复（本次内容与上上次相同）
+                # 増加是否只是误判恢复（本次内容与上上次相同）
                 is_false_recovery = False
                 if added and len(files) >= 3:
                     file_prev2 = os.path.join(OUTPUT_DIR, files[-4])
@@ -577,13 +501,12 @@ async def main(f=None):
 
                 if should_send:
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり、Calendar読込✅")
-                    if body_lines:
-                        #===========v2.1 2026/04/10 Upd Start
-                        # body_lines = read_calendar_info(body_lines)
-                        body_lines = read_calendar_info(filter_body_lines(body_lines))
-                        #===========v2.1 2026/04/10 Upd End
+                    filtered = filter_body_lines(body_lines)
+                    has_avali = bool(filtered)
+                    if filtered:
+                        body_lines = read_calendar_info(filtered)
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
-                    send_mail(body_lines)
+                    send_mail(body_lines, has_avali)
                     sent = 'X'
                 else:
                     skip_reason = []
@@ -595,7 +518,8 @@ async def main(f=None):
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（{reason_str}）🔕")
                     
                     #----後日削除Start
-                    send_mail(filter_body_lines(body_lines))
+                    filtered = filter_body_lines(body_lines)
+                    send_mail(filtered, bool(filtered))
                     sent = 'X'
                     #----後日削除End
             
@@ -604,7 +528,8 @@ async def main(f=None):
 
         else:
             print("旧ファイル存在なし、メール送信")
-            send_mail(filter_body_lines(body_lines))
+            filtered = filter_body_lines(body_lines)
+            send_mail(filtered, bool(filtered))
             sent = 'X'
         #===========v2.0 2026/04/08 Upd End
                 
@@ -612,14 +537,6 @@ async def main(f=None):
         files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
 
     #===========v1.7 2026/03/17 Upd Start
-    # # 朝0時0分
-    # if start.hour == 0 and start.minute < 10 and sent == '': 
-    #     #===========v1.6 2026/03/10 Add Start
-    #     if body_lines:
-    #         body_lines = read_calendar_info(body_lines)
-    #     #===========v1.6 2026/03/10 Add End  
-    #     send_mail(body_lines)
-
     if start.hour < 1 and sent == '':
         today_str = start.strftime("%Y%m%d")
         sent_flag_file = os.path.join(OUTPUT_DIR, "daily_sent.txt")
@@ -628,13 +545,12 @@ async def main(f=None):
             with open(sent_flag_file, "r") as f:
                 last_sent_date = f.read().strip()
         if last_sent_date != today_str:
-            if body_lines:
-                #===========v2.1 2026/04/10 Upd Start
-                # body_lines = read_calendar_info(body_lines)
-                body_lines = read_calendar_info(filter_body_lines(body_lines))
-                #===========v2.1 2026/04/10 Upd End
+            filtered = filter_body_lines(body_lines)
+            has_avali = bool(filtered)
+            if filtered:
+                body_lines = read_calendar_info(filtered)
             print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時強制送信✅")
-            send_mail(body_lines)
+            send_mail(body_lines, has_avali)
         else:
             print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時送信済み、スキップ🔕")
     #===========v1.7 2026/03/17 Upd End
@@ -802,7 +718,6 @@ async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: F
 
     except TimeoutError:
         #===========v2.0 2026/04/08 Upd Start
-        # return body_lines_lc, old_html_lc
         return [f"__TIMEOUT__:{name[0]}"], old_html_lc
         #===========v2.0 2026/04/08 Upd End
 
@@ -839,8 +754,6 @@ async def get_avalinfo(frame: Frame) -> dict:
     end_of_this_month = calendar.monthrange(today.year, today.month)[1] # 今月末
 
 #===========v1.5 2026/01/29 Upd Start
-#     # 今月末の3日間
-#     if today.day >= end_of_this_month - 2:  # 月末3天（例：1月29、30、31号）
     # 今月末17時以降
     if today.day == end_of_this_month and today.hour >= 17:  # 月末（例：1月31号 17時）
 #===========v1.5 2026/01/29 Upd End
@@ -867,19 +780,11 @@ async def get_avalinfo(frame: Frame) -> dict:
             continue
             
 #===========v1.4 2025/12/29 Upd Start
-        # # 翌月末まで
-        # target_date = extract_date(date_text)
-        # end_of_this_month = calendar.monthrange(today.year, today.month)[1]
-        # end_of_next_month = get_end_of_next_month()
-        # if target_date > end_of_next_month and today.day != end_of_this_month:
-        #     return avalinfo
-        
         target_date = extract_date(date_text)
         if target_date > deadline:
             return avalinfo
 #===========v1.4 2025/12/29 Upd End
             
-        # holiday = "X"
         holiday = ""
         match = re.search(r"(\d{1,2})月(\d{1,2})日", date_text)
         if match:
