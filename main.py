@@ -94,7 +94,7 @@ def get_timestamp():
     # now = datetime.now()
     rounded = now.replace(minute=(now.minute // 10) * 10, second=0, microsecond=0)
     return rounded.strftime("%Y%m%d%H%M")
-    
+
 def save_file(lines: list[str], filename: str):
     with open(filename, "w", encoding="utf-8") as f:
         for line in lines:
@@ -475,15 +475,27 @@ async def main(f=None):
                     line for line in removed
                     if line.strip() and not line.startswith("【")
                 ]
-                
+
+                #===========v2.1 2026/04/10 Upd Start
+                # タイムアウト施設に属する行をファイルから抽出（施設名首字母で【X.xxx】ブロックを特定）
+                timeout_owned_lines = set()
+                if timeout_facilities:
+                    with open(file_prev1, encoding="utf-8") as f:
+                        prev1_all = f.read().splitlines()
+                    current_is_timeout = False
+                    for line in prev1_all:
+                        m = re.match(r"^【([A-Z])\..+?】$", line)
+                        if m:
+                            current_is_timeout = m.group(1) in timeout_facilities
+                        elif current_is_timeout and line.startswith("・"):
+                            timeout_owned_lines.add(line)
+
                 removed_by_timeout = (
                     bool(timeout_facilities)
                     and bool(meaningful_removed)
-                    and all(
-                        any(fac in line for fac in timeout_facilities)
-                        for line in meaningful_removed
-                    )
+                    and all(line in timeout_owned_lines for line in meaningful_removed)
                 )
+                #===========v2.1 2026/04/10 Upd End
 
                 # 増加是否只是误判恢复（本次内容与上上次相同）
                 is_false_recovery = False
