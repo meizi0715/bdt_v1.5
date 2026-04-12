@@ -407,11 +407,74 @@ def merge_body_lines(body_lines: list[str]) -> list[str]:
 def filter_body_lines(body_lines: list[str]) -> list[str]:
     return [l for l in body_lines if not l.startswith("__TIMEOUT__:")]
 
+#===========v2.2 2026/04/13 Add Start
+NOMAIL_FILE = os.path.join("input", "nomail.txt")
+
+def load_nomail_lines() -> set[str]:
+    """nomail.txtから・で始まる行をすべて読み込み、setで返す"""
+    if not os.path.exists(NOMAIL_FILE):
+        return set()
+    with open(NOMAIL_FILE, encoding="utf-8") as f:
+        return {line.rstrip("\n") for line in f if line.startswith("・")}
+
+def cleanup_nomail(today: date):
+    """nomail.txtから当日以前の日付を含む行と、その後空になったブロックを削除する"""
+    if not os.path.exists(NOMAIL_FILE):
+        return
+    with open(NOMAIL_FILE, encoding="utf-8") as f:
+        lines = [line.rstrip("\n") for line in f]
+
+    new_lines = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        # 施設ブロックのヘッダー行
+        if re.match(r"^【[A-Z]\..*?】$", line):
+            header = line
+            block_lines = []
+            i += 1
+            while i < len(lines) and not re.match(r"^【[A-Z]\..*?】$", lines[i]):
+                block_lines.append(lines[i])
+                i += 1
+            # ・行のうち、当日以降のものだけ残す
+            kept = []
+            for bl in block_lines:
+                if not bl.startswith("・"):
+                    kept.append(bl)
+                    continue
+                try:
+                    d = extract_date(bl)
+                    if d >= today:
+                        kept.append(bl)
+                except:
+                    kept.append(bl)
+            # ・行が1行以上残っていればブロックを維持
+            has_slot = any(bl.startswith("・") for bl in kept)
+            if has_slot:
+                new_lines.append(header)
+                new_lines.extend(kept)
+        else:
+            new_lines.append(line)
+            i += 1
+
+    # 末尾の空行を整理
+    while new_lines and new_lines[-1].strip() == "":
+        new_lines.pop()
+
+    with open(NOMAIL_FILE, "w", encoding="utf-8") as f:
+        for line in new_lines:
+            f.write(line + "\n")
+#===========v2.2 2026/04/13 Add End
+
 async def main(f=None):
     # 開始
     start = datetime.now(ZoneInfo("Asia/Tokyo"))
     # start = datetime.now()
-
+    
+    #===========v2.2 2026/04/13 Add Start
+    cleanup_nomail(start.date())
+    #===========v2.2 2026/04/13 Add End
+    
     async with async_playwright() as playwright:
 
         tasks_scc = [
@@ -470,7 +533,12 @@ async def main(f=None):
 
                 added   = new_lines - prev1_lines
                 removed = prev1_lines - new_lines
-
+                
+                meaningful_added = {
+                    line for line in added
+                    if line.strip() and not line.startswith("【")
+                }
+                
                 meaningful_removed = [
                     line for line in removed
                     if line.strip() and not line.startswith("【")
@@ -505,10 +573,26 @@ async def main(f=None):
                         prev2_lines = set(f.read().splitlines())
                     is_false_recovery = (new_lines == prev2_lines)
 
+                #===========v2.2 2026/04/13 Add Start
+                # nomail.txtに基づくスキップ判定
+                nomail_lines = load_nomail_lines()
+                # 新規追加のうちnomail外の行があれば送信対象
+                added_outside_nomail = meaningful_added - nomail_lines
+                # 削除のうちnomail外の行があれば送信対象
+                removed_outside_nomail = [l for l in meaningful_removed if l not in nomail_lines]
+                # 変化がすべてnomail内に収まる場合はスキップ
+                all_changes_in_nomail = (
+                    bool(nomail_lines)
+                    and not added_outside_nomail
+                    and not removed_outside_nomail
+                    and (bool(meaningful_added) or bool(meaningful_removed))
+                )
+                #===========v2.2 2026/04/13 Add End
+
                 should_send = False
-                if added and not is_false_recovery:
+                if added_outside_nomail and not is_false_recovery:
                     should_send = True
-                elif removed and not removed_by_timeout:
+                elif removed_outside_nomail and not removed_by_timeout:
                     should_send = True
 
                 if should_send:
@@ -526,6 +610,8 @@ async def main(f=None):
                         skip_reason.append(f"timeout（{', '.join(timeout_facilities)}）による消失")
                     if is_false_recovery:
                         skip_reason.append("誤判回復（前々回と同一内容）")
+                    if all_changes_in_nomail:
+                        skip_reason.append("nomail対象のみの変化")
                     reason_str = "、".join(skip_reason) if skip_reason else "不明"
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（{reason_str}）🔕")
                     
