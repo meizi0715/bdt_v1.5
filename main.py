@@ -484,7 +484,7 @@ async def main(f=None):
                         prev1_all = f.read().splitlines()
                     current_is_timeout = False
                     for line in prev1_all:
-                        m = re.match(r"^【([A-Z])\..+?】$", line)
+                        m = re.match(r"^【([A-Z])\..*?】$", line)
                         if m:
                             current_is_timeout = m.group(1) in timeout_facilities
                         elif current_is_timeout and line.startswith("・"):
