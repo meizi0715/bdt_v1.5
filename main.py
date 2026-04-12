@@ -567,7 +567,7 @@ async def main(f=None):
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（{reason_str}）🔕")
                     
                     #----後日削除Start
-                    send_mail(body_lines, bool(body_lines))
+                    send_mail(body_lines, has_avali)
                     sent = 'X'
                     #----後日削除End
             
