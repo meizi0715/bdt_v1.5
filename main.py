@@ -404,9 +404,6 @@ def merge_body_lines(body_lines: list[str]) -> list[str]:
     return result
 #===========v1.7 2026/03/17 Add End
 
-def filter_body_lines(body_lines: list[str]) -> list[str]:
-    return [l for l in body_lines if not l.startswith("__TIMEOUT__:")]
-
 #===========v2.2 2026/04/13 Add Start
 NOMAIL_FILE = os.path.join("input", "nomail.txt")
 
@@ -496,9 +493,7 @@ async def main(f=None):
         body_lines.extend(group)
 
     #===========v2.0 2026/04/08 Upd Start
-    timeout_lines = [line for line in body_lines if line.startswith("__TIMEOUT__:")]
     body_lines = merge_body_lines(body_lines)
-    body_lines = timeout_lines + body_lines
     #===========v2.0 2026/04/08 Upd End
     
     # 错误判断
@@ -511,12 +506,7 @@ async def main(f=None):
         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル保存 {file_new}")
 
         #===========v2.0 2026/04/08 Upd Start
-        timeout_facilities = set()
-        for line in body_lines:
-            if line.startswith("__TIMEOUT__:"):
-                timeout_facilities.add(line.split(":", 1)[1])
-        
-        file_content = [re.sub(r"【([A-Z])\..+?】", r"【\1.】", line) for line in body_lines if not line.startswith("__TIMEOUT__")]
+        file_content = list(body_lines)
         save_file(file_content, file_new)
 
         # 差分比较
@@ -544,35 +534,6 @@ async def main(f=None):
                     if line.strip() and not line.startswith("【")
                 ]
 
-                #===========v2.1 2026/04/10 Upd Start
-                # タイムアウト施設に属する行をファイルから抽出（施設名首字母で【X.xxx】ブロックを特定）
-                timeout_owned_lines = set()
-                if timeout_facilities:
-                    with open(file_prev1, encoding="utf-8") as f:
-                        prev1_all = f.read().splitlines()
-                    current_is_timeout = False
-                    for line in prev1_all:
-                        m = re.match(r"^【([A-Z])\..*?】$", line)
-                        if m:
-                            current_is_timeout = m.group(1) in timeout_facilities
-                        elif current_is_timeout and line.startswith("・"):
-                            timeout_owned_lines.add(line)
-
-                removed_by_timeout = (
-                    bool(timeout_facilities)
-                    and bool(meaningful_removed)
-                    and all(line in timeout_owned_lines for line in meaningful_removed)
-                )
-                #===========v2.1 2026/04/10 Upd End
-
-                # 増加是否只是误判恢复（本次内容与上上次相同）
-                is_false_recovery = False
-                if added and len(files) >= 3:
-                    file_prev2 = os.path.join(OUTPUT_DIR, files[-4])
-                    with open(file_prev2, encoding="utf-8") as f:
-                        prev2_lines = set(f.read().splitlines())
-                    is_false_recovery = (new_lines == prev2_lines)
-
                 #===========v2.2 2026/04/13 Add Start
                 # nomail.txtに基づくスキップ判定
                 nomail_lines = load_nomail_lines()
@@ -589,35 +550,24 @@ async def main(f=None):
                 )
                 #===========v2.2 2026/04/13 Add End
 
-                should_send = False
-                if added_outside_nomail and not is_false_recovery:
-                    should_send = True
-                elif removed_outside_nomail and not removed_by_timeout:
-                    should_send = True
-
+                should_send = bool(added_outside_nomail or removed_outside_nomail)
                 if should_send:
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり、Calendar読込✅")
-                    filtered = filter_body_lines(body_lines)
-                    has_avali = bool(filtered)
-                    if filtered:
-                        body_lines = read_calendar_info(filtered)
+                    has_avali = bool(body_lines)
+                    if body_lines:
+                        body_lines = read_calendar_info(body_lines)
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - メール送信✅")
                     send_mail(body_lines, has_avali)
                     sent = 'X'
                 else:
                     skip_reason = []
-                    if removed_by_timeout:
-                        skip_reason.append(f"timeout（{', '.join(timeout_facilities)}）による消失")
-                    if is_false_recovery:
-                        skip_reason.append("誤判回復（前々回と同一内容）")
                     if all_changes_in_nomail:
                         skip_reason.append("nomail対象のみの変化")
                     reason_str = "、".join(skip_reason) if skip_reason else "不明"
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（{reason_str}）🔕")
                     
                     #----後日削除Start
-                    filtered = filter_body_lines(body_lines)
-                    send_mail(filtered, bool(filtered))
+                    send_mail(body_lines, bool(body_lines))
                     sent = 'X'
                     #----後日削除End
             
@@ -626,8 +576,7 @@ async def main(f=None):
 
         else:
             print("旧ファイル存在なし、メール送信")
-            filtered = filter_body_lines(body_lines)
-            send_mail(filtered, bool(filtered))
+            send_mail(body_lines, bool(body_lines))
             sent = 'X'
         #===========v2.0 2026/04/08 Upd End
                 
@@ -643,10 +592,9 @@ async def main(f=None):
             with open(sent_flag_file, "r") as f:
                 last_sent_date = f.read().strip()
         if last_sent_date != today_str:
-            filtered = filter_body_lines(body_lines)
-            has_avali = bool(filtered)
-            if filtered:
-                body_lines = read_calendar_info(filtered)
+            has_avali = bool(body_lines)
+            if body_lines:
+                body_lines = read_calendar_info(body_lines)
             print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - 0時強制送信✅")
             send_mail(body_lines, has_avali)
         else:
@@ -779,7 +727,7 @@ async def process_kaikan(playwright, kaikan, kaikan21, kaikan22, _, page_lc, lab
                 await browser.close()
             except:
                 pass
-        return [f"__TIMEOUT__:{name[0]}"]
+        return []
     #===========v2.0 2026/04/08 Add End  
 
 async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: Frame, old_html: str, previs: int, kaikan: int) -> tuple[list[str], str]:
@@ -816,7 +764,7 @@ async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: F
 
     except TimeoutError:
         #===========v2.0 2026/04/08 Upd Start
-        return [f"__TIMEOUT__:{name[0]}"], old_html_lc
+        return [], old_html_lc
         #===========v2.0 2026/04/08 Upd End
 
     if date_to_times:        
