@@ -3,7 +3,7 @@ name: Cleanup old workflow runs
 on:
   schedule:
     # 每 3 小时触发一次（UTC 时间）
-    # - cron: '5 */3 * * *'
+    - cron: '5 */3 * * *'
 
 jobs:
   cleanup:
