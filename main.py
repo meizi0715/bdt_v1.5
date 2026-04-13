@@ -822,8 +822,9 @@ async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: F
         return [], old_html_lc
         #===========v2.0 2026/04/08 Upd End
 
-    if date_to_times:        
-        body_lines_lc.append(f"\n【{name}】")
+    if date_to_times:
+        short_name = name.split(".")[0] + "." if "." in name else name
+        body_lines_lc.append(f"\n【{short_name}】")
         for date, times in date_to_times.items():
             line = f"・{date} - " + "、".join(times)
             body_lines_lc.append(line)
