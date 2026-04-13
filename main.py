@@ -593,7 +593,12 @@ async def main(f=None):
 
                 should_send = bool(added_outside_nomail or removed_outside_nomail)
                 if should_send:
-                    print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり、Calendar読込✅")
+                    direction = []
+                    if added_outside_nomail:
+                        direction.append("追加あり")
+                    if removed_outside_nomail:
+                        direction.append("削除あり")
+                    print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり（{'、'.join(direction)}）、Calendar読込✅")
                     has_avali = bool(body_lines)
                     if body_lines:
                         body_lines = read_calendar_info(body_lines)
@@ -603,7 +608,12 @@ async def main(f=None):
                 else:
                     skip_reason = []
                     if all_changes_in_nomail:
-                        skip_reason.append("nomail対象のみの変化")
+                        direction = []
+                        if meaningful_added_keyed:
+                            direction.append("追加あり")
+                        if meaningful_removed_keyed:
+                            direction.append("削除あり")
+                        skip_reason.append(f"nomail対象のみの変化（{'、'.join(direction)}）")
                     elif not meaningful_added and not meaningful_removed:
                         skip_reason.append("意味のある差異なし（ヘッダ行・空行のみの変化）")
                     reason_str = "、".join(skip_reason) if skip_reason else "不明"
