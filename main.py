@@ -408,11 +408,20 @@ def merge_body_lines(body_lines: list[str]) -> list[str]:
 NOMAIL_FILE = os.path.join("input", "nomail.txt")
 
 def load_nomail_lines() -> set[str]:
-    """nomail.txtから・で始まる行をすべて読み込み、setで返す"""
+    """nomail.txtから施設略称と・行の組合せキーをsetで返す（例: "N.|・5月10日..."）"""
     if not os.path.exists(NOMAIL_FILE):
         return set()
+    result = set()
+    current_prefix = ""
     with open(NOMAIL_FILE, encoding="utf-8") as f:
-        return {line.rstrip("\n") for line in f if line.startswith("・")}
+        for line in f:
+            line = line.rstrip("\n")
+            m = re.match(r"^【([A-Z]+\.).*?】$", line)
+            if m:
+                current_prefix = m.group(1)
+            elif line.startswith("・") and current_prefix:
+                result.add(f"{current_prefix}|{line}")
+    return result
 
 def cleanup_nomail(today: date):
     """nomail.txtから当日以前の日付を含む行と、その後空になったブロックを削除する"""
@@ -517,13 +526,36 @@ async def main(f=None):
 
                 # 読取上一次和本次内容
                 with open(file_prev1, encoding="utf-8") as f:
-                    prev1_lines = set(f.read().splitlines())
+                    prev1_raw = f.read().splitlines()
                 with open(file_new, encoding="utf-8") as f:
-                    new_lines = set(f.read().splitlines())
+                    new_raw = f.read().splitlines()
+
+                def make_keyed_set(raw_lines):
+                    """各・行に施設略称プレフィックスを付けたsetを返す"""
+                    keyed = set()
+                    prefix = ""
+                    for line in raw_lines:
+                        m = re.match(r"^【([A-Z]+\.).*?】$", line.strip())
+                        if m:
+                            prefix = m.group(1)
+                        elif line.startswith("・") and prefix:
+                            keyed.add(f"{prefix}|{line}")
+                        else:
+                            keyed.add(line)  # 空行・ヘッダ行はそのまま
+                    return keyed
+
+                prev1_keyed = make_keyed_set(prev1_raw)
+                new_keyed   = make_keyed_set(new_raw)
+
+                prev1_lines = set(prev1_raw)
+                new_lines   = set(new_raw)
 
                 added   = new_lines - prev1_lines
                 removed = prev1_lines - new_lines
-                
+
+                added_keyed   = new_keyed - prev1_keyed
+                removed_keyed = prev1_keyed - new_keyed
+
                 meaningful_added = {
                     line for line in added
                     if line.strip() and not line.startswith("【")
@@ -534,13 +566,22 @@ async def main(f=None):
                     if line.strip() and not line.startswith("【")
                 ]
 
+                meaningful_added_keyed = {
+                    k for k in added_keyed
+                    if "|" in k  # 施設付き・行のみ
+                }
+                meaningful_removed_keyed = [
+                    k for k in removed_keyed
+                    if "|" in k
+                ]
+
                 #===========v2.2 2026/04/13 Add Start
-                # nomail.txtに基づくスキップ判定
+                # nomail.txtに基づくスキップ判定（施設名付きキーで比較）
                 nomail_lines = load_nomail_lines()
                 # 新規追加のうちnomail外の行があれば送信対象
-                added_outside_nomail = meaningful_added - nomail_lines
+                added_outside_nomail = meaningful_added_keyed - nomail_lines
                 # 削除のうちnomail外の行があれば送信対象
-                removed_outside_nomail = [l for l in meaningful_removed if l not in nomail_lines]
+                removed_outside_nomail = [l for l in meaningful_removed_keyed if l not in nomail_lines]
                 # 変化がすべてnomail内に収まる場合はスキップ
                 all_changes_in_nomail = (
                     bool(nomail_lines)
@@ -563,6 +604,8 @@ async def main(f=None):
                     skip_reason = []
                     if all_changes_in_nomail:
                         skip_reason.append("nomail対象のみの変化")
+                    elif not meaningful_added and not meaningful_removed:
+                        skip_reason.append("意味のある差異なし（ヘッダ行・空行のみの変化）")
                     reason_str = "、".join(skip_reason) if skip_reason else "不明"
                     print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異あり但送信スキップ（{reason_str}）🔕")
                     
@@ -571,6 +614,7 @@ async def main(f=None):
                     send_mail(body_lines, has_avali)
                     sent = 'X'
                     #----後日削除End
+
             
             else:
                 print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル比較\n           新 {file_new}\n           旧 {file_prev1}\n           差異なし、送信不要🔕")
