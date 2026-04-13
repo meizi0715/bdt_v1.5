@@ -515,7 +515,10 @@ async def main(f=None):
         print(f"{datetime.now(ZoneInfo('Asia/Tokyo')).strftime('%H:%M:%S')} - ファイル保存 {file_new}")
 
         #===========v2.0 2026/04/08 Upd Start
-        file_content = list(body_lines)
+        file_content = [
+            re.sub(r"^【([A-Z]+\.).*?】$", r"【\1】", line) if re.match(r"^【[A-Z]+\..*?】$", line) else line
+            for line in body_lines
+        ]
         save_file(file_content, file_new)
 
         # 差分比较
@@ -823,8 +826,7 @@ async def process_shisetu(_, kaikan21_lc, __, shisetu, ___, ____, name, frame: F
         #===========v2.0 2026/04/08 Upd End
 
     if date_to_times:
-        short_name = name.split(".")[0] + "." if "." in name else name
-        body_lines_lc.append(f"\n【{short_name}】")
+        body_lines_lc.append(f"\n【{name}】")
         for date, times in date_to_times.items():
             line = f"・{date} - " + "、".join(times)
             body_lines_lc.append(line)
