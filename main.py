@@ -590,7 +590,7 @@ async def main(f=None):
                     bool(nomail_lines)
                     and not added_outside_nomail
                     and not removed_outside_nomail
-                    and (bool(meaningful_added) or bool(meaningful_removed))
+                    and (bool(meaningful_added_keyed) or bool(meaningful_removed_keyed))
                 )
                 #===========v2.2 2026/04/13 Add End
 
