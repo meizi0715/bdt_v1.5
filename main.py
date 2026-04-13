@@ -908,11 +908,6 @@ async def get_avalinfo(frame: Frame) -> dict:
         else:
             time = ""
 
-        #===========v1.9 2026/04/02 Add Start
-        if month == 5 and 1 <= day <= 6:
-            time = ""
-        #===========v1.9 2026/04/02 Add End
-
         if time:
             avalinfo[date_text].append(time)
 
