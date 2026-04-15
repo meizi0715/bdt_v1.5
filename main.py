@@ -901,6 +901,11 @@ async def get_avalinfo(frame: Frame) -> dict:
         else:
             time = ""
 
+        # 後日削除Start
+        if month = 5 and day <= 6
+            time = ""
+        # 後日削除End
+        
         if time:
             avalinfo[date_text].append(time)
 
