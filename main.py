@@ -902,7 +902,7 @@ async def get_avalinfo(frame: Frame) -> dict:
             time = ""
 
         # 後日削除Start
-        if month = 5 and day <= 6
+        if month == 5 and 1 <= day <= 6:
             time = ""
         # 後日削除End
         
