@@ -662,7 +662,7 @@ async def main(f=None):
 
         # 差分比较
         files = sorted(f for f in os.listdir(OUTPUT_DIR) if f.endswith(".txt"))
-        if len(files) >= 2:
+        if len(files) >= 1:
             file_prev1 = os.path.join(OUTPUT_DIR, files[-2])
             if compare_files(file_prev1, file_new):
 
