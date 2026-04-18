@@ -60,7 +60,7 @@ jobs:
             git add .gitignore
           fi
 
-          git add -A output
+          git add -A output input
 
           if [ -n "$(git status --porcelain)" ]; then
             git commit -m "Update result files"
