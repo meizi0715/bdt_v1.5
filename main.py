@@ -907,6 +907,14 @@ async def get_avalinfo(frame: Frame) -> dict:
         # 後日削除End
         
         if time:
+            # 今日のコマは終了時刻が過ぎていればスキップ
+            if target_date == today.date():
+                end_time_match = re.search(r"～(\d{2}):(\d{2})", time)
+                if end_time_match:
+                    end_h, end_m = int(end_time_match.group(1)), int(end_time_match.group(2))
+                    slot_end = today.replace(hour=end_h, minute=end_m, second=0, microsecond=0)
+                    if today >= slot_end:
+                        continue
             avalinfo[date_text].append(time)
 
     return avalinfo
