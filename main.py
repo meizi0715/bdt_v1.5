@@ -497,7 +497,8 @@ def update_first_seen(current_keyed: set[str], now: datetime):
     """
     if os.path.exists(FIRST_SEEN_FILE):
         with open(FIRST_SEEN_FILE, encoding="utf-8") as f:
-            data: dict = json.load(f)
+            raw = f.read().strip()
+        data: dict = json.loads(raw) if raw else {}
     else:
         data = {}
 
