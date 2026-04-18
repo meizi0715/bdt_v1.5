@@ -472,6 +472,136 @@ def cleanup_nomail(today: date):
             f.write(line + "\n")
 #===========v2.2 2026/04/13 Add End
 
+#===========v2.3 2026/04/18 Add Start
+FIRST_SEEN_FILE = os.path.join(OUTPUT_DIR, "first_seen.json")
+
+def _body_lines_to_keyed(body_lines: list[str]) -> set[str]:
+    """body_lines（【施設名】+ ・行）からkeyed setを返す（例: "N.|・5月10日..."）"""
+    keyed = set()
+    prefix = ""
+    for line in body_lines:
+        m = re.match(r"^【([A-Z]+\.).*?】$", line.strip())
+        if m:
+            prefix = m.group(1)
+        elif line.startswith("・") and prefix:
+            keyed.add(f"{prefix}|{line}")
+    return keyed
+
+def update_first_seen(current_keyed: set[str], now: datetime):
+    """
+    first_seen.jsonを更新する。
+    - 今回の結果に存在するキーが未登録なら現在時刻で登録
+    - 今回の結果に存在しないキーは削除（空場が消えた）
+    """
+    if os.path.exists(FIRST_SEEN_FILE):
+        with open(FIRST_SEEN_FILE, encoding="utf-8") as f:
+            data: dict = json.load(f)
+    else:
+        data = {}
+
+    now_iso = now.isoformat()
+    # 新規キーを登録
+    for key in current_keyed:
+        if key not in data:
+            data[key] = now_iso
+    # 消えたキーを削除
+    data = {k: v for k, v in data.items() if k in current_keyed}
+
+    with open(FIRST_SEEN_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+
+def promote_to_nomail(current_keyed: set[str], now: datetime):
+    """
+    first_seen.jsonの中で初回登録から24時間以上経過し、
+    かつ今も存在するキーをnomail.txtに書き込む。
+    書き込んだキーはfirst_seen.jsonから削除する。
+    """
+    if not os.path.exists(FIRST_SEEN_FILE):
+        return
+
+    with open(FIRST_SEEN_FILE, encoding="utf-8") as f:
+        data: dict = json.load(f)
+
+    tz = ZoneInfo("Asia/Tokyo")
+    to_promote: dict[str, list[str]] = {}  # prefix -> [・行, ...]
+    promoted_keys = []
+
+    for key, first_iso in data.items():
+        if key not in current_keyed:
+            continue
+        first_dt = datetime.fromisoformat(first_iso)
+        if first_dt.tzinfo is None:
+            first_dt = first_dt.replace(tzinfo=tz)
+        if (now - first_dt) >= timedelta(hours=24):
+            # "N.|・5月10日..." -> prefix="N.", line="・5月10日..."
+            sep = key.index("|")
+            prefix = key[:sep]          # "N."
+            dot_line = key[sep + 1:]    # "・5月10日..."
+            to_promote.setdefault(prefix, []).append(dot_line)
+            promoted_keys.append(key)
+
+    if not to_promote:
+        return
+
+    # nomail.txt を読み込んで既存ブロックにマージ
+    if os.path.exists(NOMAIL_FILE):
+        with open(NOMAIL_FILE, encoding="utf-8") as f:
+            nomail_raw = [line.rstrip("\n") for line in f]
+    else:
+        nomail_raw = []
+
+    # ブロック構造をパース: {prefix: [・行, ...]}
+    blocks: dict[str, list[str]] = {}
+    block_order: list[str] = []
+    cur_prefix = None
+    for line in nomail_raw:
+        m = re.match(r"^【([A-Z]+\.).*?】$", line)
+        if m:
+            cur_prefix = m.group(1)
+            if cur_prefix not in blocks:
+                blocks[cur_prefix] = []
+                block_order.append(cur_prefix)
+        elif cur_prefix and line.startswith("・"):
+            blocks[cur_prefix].append(line)
+
+    # 書き込み対象を既存ブロックに追加（重複排除）
+    added_count = 0
+    for prefix, lines in to_promote.items():
+        if prefix not in blocks:
+            blocks[prefix] = []
+            block_order.append(prefix)
+        for l in lines:
+            if l not in blocks[prefix]:
+                blocks[prefix].append(l)
+                added_count += 1
+
+    if added_count == 0:
+        return
+
+    # nomail.txt に書き直す（施設名は略称のみ: 【N.】形式）
+    new_nomail: list[str] = []
+    for prefix in block_order:
+        dot_lines = blocks[prefix]
+        if not dot_lines:
+            continue
+        if new_nomail:
+            new_nomail.append("")
+        new_nomail.append(f"【{prefix}】")
+        new_nomail.extend(dot_lines)
+
+    with open(NOMAIL_FILE, "w", encoding="utf-8") as f:
+        for line in new_nomail:
+            f.write(line + "\n")
+
+    print(f"{now.strftime('%H:%M:%S')} - nomail.txt更新（24時間経過の空場を{added_count}件追加）✅")
+
+    # first_seen から削除
+    for key in promoted_keys:
+        data.pop(key, None)
+    with open(FIRST_SEEN_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+#===========v2.3 2026/04/18 Add End
+
 async def main(f=None):
     # 開始
     start = datetime.now(ZoneInfo("Asia/Tokyo"))
@@ -504,6 +634,12 @@ async def main(f=None):
     #===========v2.0 2026/04/08 Upd Start
     body_lines = merge_body_lines(body_lines)
     #===========v2.0 2026/04/08 Upd End
+    
+    #===========v2.3 2026/04/18 Add Start
+    current_keyed = _body_lines_to_keyed(body_lines)
+    promote_to_nomail(current_keyed, start)
+    update_first_seen(current_keyed, start)
+    #===========v2.3 2026/04/18 Add End
     
     # 错误判断
     sent = ''    
