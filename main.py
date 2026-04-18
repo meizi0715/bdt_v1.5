@@ -21,6 +21,8 @@ from google.oauth2 import service_account
 OUTPUT_DIR = "output"
 # OUTPUT_DIR = "C:/Users/xxx/Downloads/"
 os.makedirs(OUTPUT_DIR, exist_ok=True)
+INPUT_DIR = "input"
+os.makedirs(INPUT_DIR, exist_ok=True)
 
 time_slots = {
     '0': '09:00～11:00',
@@ -143,7 +145,7 @@ def send_mail(body_lines: list[str], has_avali: bool = True):
     #===========v1.7 2026/03/17 Add Start
     # 送信日付を記録
     today_str = datetime.now(ZoneInfo("Asia/Tokyo")).strftime("%Y%m%d")
-    sent_flag_file = os.path.join(OUTPUT_DIR, "daily_sent.txt")
+    sent_flag_file = os.path.join(INPUT_DIR, "daily_sent.txt")
     with open(sent_flag_file, "w") as f:
         f.write(today_str)
     #===========v1.7 2026/03/17 Add End
@@ -473,7 +475,7 @@ def cleanup_nomail(today: date):
 #===========v2.2 2026/04/13 Add End
 
 #===========v2.3 2026/04/18 Add Start
-FIRST_SEEN_FILE = os.path.join(OUTPUT_DIR, "first_seen.json")
+FIRST_SEEN_FILE = os.path.join(INPUT_DIR, "first_seen.json")
 
 def _body_lines_to_keyed(body_lines: list[str]) -> set[str]:
     """body_lines（【施設名】+ ・行）からkeyed setを返す（例: "N.|・5月10日..."）"""
@@ -631,10 +633,11 @@ async def main(f=None):
             continue
         body_lines.extend(group)
 
+
     #===========v2.0 2026/04/08 Upd Start
     body_lines = merge_body_lines(body_lines)
     #===========v2.0 2026/04/08 Upd End
-    
+
     #===========v2.3 2026/04/18 Add Start
     current_keyed = _body_lines_to_keyed(body_lines)
     promote_to_nomail(current_keyed, start)
@@ -773,7 +776,7 @@ async def main(f=None):
     #===========v1.7 2026/03/17 Upd Start
     if start.hour < 1 and sent == '':
         today_str = start.strftime("%Y%m%d")
-        sent_flag_file = os.path.join(OUTPUT_DIR, "daily_sent.txt")
+        sent_flag_file = os.path.join(INPUT_DIR, "daily_sent.txt")
         last_sent_date = ""
         if os.path.exists(sent_flag_file):
             with open(sent_flag_file, "r") as f:
