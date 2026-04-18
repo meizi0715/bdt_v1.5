@@ -522,7 +522,8 @@ def promote_to_nomail(current_keyed: set[str], now: datetime):
         return
 
     with open(FIRST_SEEN_FILE, encoding="utf-8") as f:
-        data: dict = json.load(f)
+        raw = f.read().strip()
+    data: dict = json.loads(raw) if raw else {}
 
     tz = ZoneInfo("Asia/Tokyo")
     to_promote: dict[str, list[str]] = {}  # prefix -> [・行, ...]
