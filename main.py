@@ -515,7 +515,7 @@ def update_first_seen(current_keyed: set[str], now: datetime):
 
 def promote_to_nomail(current_keyed: set[str], now: datetime):
     """
-    first_seen.jsonの中で初回登録から24時間以上経過し、
+    first_seen.jsonの中で初回登録から4時間以上経過し、
     かつ今も存在するキーをnomail.txtに書き込む。
     書き込んだキーはfirst_seen.jsonから削除する。
     """
@@ -536,7 +536,7 @@ def promote_to_nomail(current_keyed: set[str], now: datetime):
         first_dt = datetime.fromisoformat(first_iso)
         if first_dt.tzinfo is None:
             first_dt = first_dt.replace(tzinfo=tz)
-        if (now - first_dt) >= timedelta(hours=24):
+        if (now - first_dt) >= timedelta(hours=4):
             # "N.|・5月10日..." -> prefix="N.", line="・5月10日..."
             sep = key.index("|")
             prefix = key[:sep]          # "N."
