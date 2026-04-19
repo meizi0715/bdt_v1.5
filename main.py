@@ -642,8 +642,6 @@ async def main(f=None):
 
     #===========v2.3 2026/04/18 Add Start
     current_keyed = _body_lines_to_keyed(body_lines)
-    print(f"[DEBUG] body_lines={body_lines}")
-    print(f"[DEBUG] current_keyed={current_keyed}")
     promote_to_nomail(current_keyed, start)
     update_first_seen(current_keyed, start)
     #===========v2.3 2026/04/18 Add End
