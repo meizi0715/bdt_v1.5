@@ -64,10 +64,16 @@ jobs:
 
           if [ -n "$(git status --porcelain)" ]; then
             git commit -m "Update result files"
-            git pull --rebase
+            git fetch origin
+            git rebase origin/main || (
+              git checkout --ours input/first_seen.json &&
+              git add input/first_seen.json &&
+              GIT_EDITOR=true git rebase --continue
+            )
             git push
           else
-            echo "📭 没有变更需要提交，跳过 commit"
+            echo "📭 没有変更需要提交，跳过 commit"
           fi
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
