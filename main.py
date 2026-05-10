@@ -1041,11 +1041,6 @@ async def get_avalinfo(frame: Frame) -> dict:
             time = '19:00～21:00'
         else:
             time = ""
-
-        # 後日削除Start
-        if month == 5 and 1 <= day <= 6:
-            time = ""
-        # 後日削除End
         
         if time:
             # 今日のコマは終了時刻が過ぎていればスキップ
